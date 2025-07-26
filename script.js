@@ -38,7 +38,7 @@ function initializeTooltips() {
 function setupEventListeners() {
     elements.form.addEventListener('submit', handleAddPlayer);
     elements.generateBtn.addEventListener('click', handleGenerateTeams);
-    elements.regenerateBtn.addEventListener('click', () => handleGenerateTeams(currentTeams.length));
+    elements.regenerateBtn.addEventListener('click', handleGenerateTeams);
     elements.clearBtn.addEventListener('click', handleClearPlayers);
     elements.cancelEditBtn.addEventListener('click', cancelEdit);
     elements.toggleSavedBtn.addEventListener('click', toggleSavedPlayersList);
@@ -161,9 +161,6 @@ function updateSavedPlayersList() {
             <span class="badge role-badge ${player.gender}">
                 ${player.gender.charAt(0).toUpperCase()}
             </span>
-            <span class="player-level ${player.level}">
-                ${getLevelText(player.level)}
-            </span>
             ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
             <span class="delete-saved" data-id="${player.id}">&times;</span>
         `;
@@ -273,9 +270,6 @@ function createPlayerElement(player) {
             </span>
             ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
         </div>
-        <span class="player-level ${player.level}">
-            ${getLevelText(player.level)}
-        </span>
         <button class="btn btn-sm btn-outline-danger delete-player" data-id="${player.id}" title="Remover jogador">
             &times;
         </button>
@@ -331,31 +325,62 @@ function handleGenerateTeams() {
 }
 
 function generateTeams(numTeams) {
-    const availablePlayers = [...players];
+    // Embaralha todos os jogadores aleatoriamente
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+    const availablePlayers = [...shuffledPlayers];
     const teams = Array(numTeams).fill().map(() => []);
+    
+    // Limpa o output antes de gerar novos times
+    elements.teamOutput.innerHTML = '';
     
     const femalePlayers = availablePlayers.filter(p => p.gender === 'feminino');
     const malePlayers = availablePlayers.filter(p => p.gender === 'masculino');
     
+    // Distribui os jogadores mantendo o balanceamento
     distributePlayers(femalePlayers, teams, availablePlayers);
     distributeMalePlayers(malePlayers, teams, availablePlayers);
     balanceTeams(teams, availablePlayers);
     ensureMinimumSetters(teams, availablePlayers);
     
+    // Exibe os novos times
     displayTeams(teams);
     currentTeams = teams;
     elements.generateBtn.style.display = 'none';
     elements.regenerateBtn.style.display = 'block';
-    showAlert(`${teams.length} times gerados com sucesso!`, 'success');
+    showAlert(`${teams.length} novos times gerados com sucesso!`, 'success');
+}
+
+function groupPlayersByLevel(players) {
+    const levelValues = { 'delicioso': 4, 'ótimo': 3, 'bom': 2, 'ok': 1 };
+    const levels = {};
+    
+    players.forEach(player => {
+        const level = player.level;
+        if (!levels[level]) {
+            levels[level] = [];
+        }
+        levels[level].push(player);
+    });
+    
+    // Retorna os grupos ordenados do maior para o menor nível
+    return Object.entries(levels)
+        .sort((a, b) => levelValues[b[0]] - levelValues[a[0]])
+        .map(([_, group]) => group);
 }
 
 function distributePlayers(players, teams, availablePlayers) {
-    const sortedPlayers = [...players].sort(comparePlayersByLevel);
-    sortedPlayers.forEach((player, index) => {
-        const teamIndex = index % teams.length;
-        teams[teamIndex].push(player);
-        removeFromAvailable(player, availablePlayers);
-    });
+    const groupedByLevel = groupPlayersByLevel(players);
+    
+    for (const levelGroup of groupedByLevel) {
+        // Embaralha os jogadores deste nível
+        const shuffledGroup = [...levelGroup].sort(() => Math.random() - 0.5);
+        
+        shuffledGroup.forEach((player, index) => {
+            const teamIndex = index % teams.length;
+            teams[teamIndex].push(player);
+            removeFromAvailable(player, availablePlayers);
+        });
+    }
 }
 
 function distributeMalePlayers(malePlayers, teams, availablePlayers) {
@@ -367,7 +392,9 @@ function distributeMalePlayers(malePlayers, teams, availablePlayers) {
 }
 
 function distributeSetters(setters, teams, availablePlayers) {
-    setters.slice(0, teams.length).forEach((setter, index) => {
+    // Embaralha os levantadores antes de distribuir
+    const shuffledSetters = [...setters].sort(() => Math.random() - 0.5);
+    shuffledSetters.slice(0, teams.length).forEach((setter, index) => {
         const teamIndex = index % teams.length;
         teams[teamIndex].push(setter);
         removeFromAvailable(setter, availablePlayers);
@@ -375,14 +402,19 @@ function distributeSetters(setters, teams, availablePlayers) {
 }
 
 function distributeByLevel(players, teams, availablePlayers) {
-    const sortedPlayers = [...players].sort(comparePlayersByLevel);
-    sortedPlayers.forEach(player => {
-        const teamIndex = findBestTeamForPlayer(teams);
-        if (teamIndex !== -1) {
-            teams[teamIndex].push(player);
-            removeFromAvailable(player, availablePlayers);
-        }
-    });
+    const groupedByLevel = groupPlayersByLevel(players);
+    
+    for (const levelGroup of groupedByLevel) {
+        const shuffledGroup = [...levelGroup].sort(() => Math.random() - 0.5);
+        
+        shuffledGroup.forEach(player => {
+            const teamIndex = findBestTeamForPlayer(teams);
+            if (teamIndex !== -1) {
+                teams[teamIndex].push(player);
+                removeFromAvailable(player, availablePlayers);
+            }
+        });
+    }
 }
 
 function comparePlayersByLevel(a, b) {
@@ -461,65 +493,24 @@ function createTeamElement(team, index) {
     const teamDiv = document.createElement('div');
     teamDiv.className = 'team mb-4';
     
-    const stats = calculateTeamStats(team);
-    
     teamDiv.innerHTML = `
         <h3 class="team-header">Time ${index + 1}</h3>
         <ul class="list-group team-players">
-            ${team.map(player => createPlayerListItem(player)).join('')}
+            ${team.map(player => `
+                <li class="list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''}">
+                    <span class="player-info">
+                        ${player.name}
+                        <span class="badge role-badge ${player.gender}">
+                            ${player.gender.charAt(0).toUpperCase()}
+                        </span>
+                        ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
+                    </span>
+                </li>
+            `).join('')}
         </ul>
-        <div class="team-stats">
-            <span>Jogadores: ${stats.players}</span>
-            <span>Masculino: ${stats.males} | Feminino: ${stats.females}</span>
-            <span>Levantadores: ${stats.setters}</span>
-            <span>Níveis: ${stats.levels.ok} OK, ${stats.levels.bom} BOM, 
-                  ${stats.levels.ótimo} ÓTIMO, ${stats.levels.delicioso} EXCELENTE</span>
-        </div>
     `;
     
     return teamDiv;
-}
-
-function createPlayerListItem(player) {
-    return `
-        <li class="list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''}">
-            <span class="player-info">
-                ${player.name}
-                <span class="badge role-badge ${player.gender}">
-                    ${player.gender.charAt(0).toUpperCase()}
-                </span>
-                ${player.isSetter ? '<span class="setter-badge" title="Levantador">L</span>' : ''}
-            </span>
-            <span class="player-level ${player.level}" title="${player.level.toUpperCase()}">
-                ${getLevelText(player.level)}
-            </span>
-        </li>
-    `;
-}
-
-function calculateTeamStats(team) {
-    return {
-        players: team.length,
-        males: team.filter(p => p.gender === 'masculino').length,
-        females: team.filter(p => p.gender === 'feminino').length,
-        setters: team.filter(p => p.isSetter).length,
-        levels: {
-            ok: team.filter(p => p.level === 'ok').length,
-            bom: team.filter(p => p.level === 'bom').length,
-            ótimo: team.filter(p => p.level === 'ótimo').length,
-            delicioso: team.filter(p => p.level === 'delicioso').length
-        }
-    };
-}
-
-function getLevelText(level) {
-    const levelTexts = {
-        'ok': 'OK',
-        'bom': 'BOM',
-        'ótimo': 'ÓTIMO',
-        'delicioso': 'EXCELENTE'
-    };
-    return levelTexts[level] || level.toUpperCase();
 }
 
 function handleClearPlayers() {

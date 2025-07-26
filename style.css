@@ -223,12 +223,6 @@ main section {
     flex-grow: 1;
 }
 
-.player-level {
-    font-weight: bold;
-    min-width: 80px;
-    text-align: right;
-}
-
 .gender-badge {
     color: var(--darker);
     padding: 5px 8px;
@@ -297,18 +291,6 @@ main section {
     border-radius: 0 !important;
 }
 
-.team-stats {
-    background-color: var(--accent);
-    padding: 10px 15px;
-    font-size: 0.9rem;
-    color: var(--darker);
-    border-top: 1px solid var(--secondary-light);
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
 footer {
     background-color: var(--primary);
     color: var(--darker);
@@ -333,11 +315,6 @@ footer {
     .btn {
         padding: 8px;
         font-size: 0.9rem;
-    }
-    
-    .team-stats {
-        flex-direction: column;
-        gap: 5px;
     }
     
     .level-options, .gender-options {
