@@ -158,13 +158,13 @@ function updateSavedPlayersList() {
         playerElement.dataset.id = player.id;
         playerElement.innerHTML = `
             ${player.name}
-            <span class="badge gender-badge ${player.gender === 'masculino' ? 'male' : 'female'}">
-                ${player.gender === 'masculino' ? '♂' : '♀'}
+            <span class="badge role-badge ${player.gender}">
+                ${player.gender.charAt(0).toUpperCase()}
             </span>
             <span class="player-level ${player.level}">
-                ${getLevelIcon(player.level)}
+                ${getLevelText(player.level)}
             </span>
-            ${player.isSetter ? '<span class="setter-badge">✋</span>' : ''}
+            ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
             <span class="delete-saved" data-id="${player.id}">&times;</span>
         `;
         
@@ -268,13 +268,13 @@ function createPlayerElement(player) {
     li.innerHTML = `
         <div class="player-info" data-id="${player.id}">
             <span class="player-name">${player.name}</span>
-            <span class="badge gender-badge ${player.gender === 'masculino' ? 'male' : 'female'}">
-                ${player.gender === 'masculino' ? '♂' : '♀'}
+            <span class="badge role-badge ${player.gender}">
+                ${player.gender.charAt(0).toUpperCase()}
             </span>
-            ${player.isSetter ? '<span class="setter-badge">✋</span>' : ''}
+            ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
         </div>
         <span class="player-level ${player.level}">
-            ${getLevelIcon(player.level)}
+            ${getLevelText(player.level)}
         </span>
         <button class="btn btn-sm btn-outline-danger delete-player" data-id="${player.id}" title="Remover jogador">
             &times;
@@ -469,11 +469,11 @@ function createTeamElement(team, index) {
             ${team.map(player => createPlayerListItem(player)).join('')}
         </ul>
         <div class="team-stats">
-            <span>👥 ${stats.players} jogadores</span>
-            <span>👨 ${stats.males} | 👩 ${stats.females}</span>
-            <span>🎯 ${stats.setters} levantador(es)</span>
-            <span>🏆 Níveis: ${stats.levels.ok} OK, ${stats.levels.bom} Bom, 
-                  ${stats.levels.ótimo} Ótimo, ${stats.levels.delicioso} Delicioso</span>
+            <span>Jogadores: ${stats.players}</span>
+            <span>Masculino: ${stats.males} | Feminino: ${stats.females}</span>
+            <span>Levantadores: ${stats.setters}</span>
+            <span>Níveis: ${stats.levels.ok} OK, ${stats.levels.bom} BOM, 
+                  ${stats.levels.ótimo} ÓTIMO, ${stats.levels.delicioso} EXCELENTE</span>
         </div>
     `;
     
@@ -485,13 +485,13 @@ function createPlayerListItem(player) {
         <li class="list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''}">
             <span class="player-info">
                 ${player.name}
-                <span class="badge gender-badge ${player.gender === 'masculino' ? 'male' : 'female'}">
-                    ${player.gender === 'masculino' ? '♂' : '♀'}
+                <span class="badge role-badge ${player.gender}">
+                    ${player.gender.charAt(0).toUpperCase()}
                 </span>
-                ${player.isSetter ? '<span class="setter-badge" title="Levantador">✋</span>' : ''}
+                ${player.isSetter ? '<span class="setter-badge" title="Levantador">L</span>' : ''}
             </span>
             <span class="player-level ${player.level}" title="${player.level.toUpperCase()}">
-                ${getLevelIcon(player.level)}
+                ${getLevelText(player.level)}
             </span>
         </li>
     `;
@@ -512,14 +512,14 @@ function calculateTeamStats(team) {
     };
 }
 
-function getLevelIcon(level) {
-    const icons = {
-        'ok': '⭐',
-        'bom': '⭐⭐',
-        'ótimo': '⭐⭐⭐',
-        'delicioso': '🔥🔥🔥'
+function getLevelText(level) {
+    const levelTexts = {
+        'ok': 'OK',
+        'bom': 'BOM',
+        'ótimo': 'ÓTIMO',
+        'delicioso': 'EXCELENTE'
     };
-    return icons[level] || level.toUpperCase();
+    return levelTexts[level] || level.toUpperCase();
 }
 
 function handleClearPlayers() {
