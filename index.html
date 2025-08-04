@@ -152,6 +152,40 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import Firebase modules from CDN
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+        import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5tDXJpe-JdC83kd9VE0Tc8V70Dblztu4",
+            authDomain: "gerador-times-volei.firebaseapp.com",
+            databaseURL: "https://gerador-times-volei-default-rtdb.firebaseio.com",
+            projectId: "gerador-times-volei",
+            storageBucket: "gerador-times-volei.firebasestorage.app",
+            messagingSenderId: "133601686847",
+            appId: "1:133601686847:web:9f60913fa7ce7a1dda4f8a",
+            measurementId: "G-3QQ5PSND5M"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const database = getDatabase(app);
+        
+        // Make Firebase available globally
+        window.firebaseApp = app;
+        window.firebaseAnalytics = analytics;
+        window.firebaseDatabase = database;
+        window.firebaseRef = ref;
+        window.firebasePush = push;
+        window.firebaseOnValue = onValue;
+    </script>
+    
     <script src="script.js"></script>
 </body>
 </html>

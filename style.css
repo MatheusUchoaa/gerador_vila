@@ -161,6 +161,26 @@ main section {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.btn-outline-primary {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary);
+    color: var(--darker);
+}
+
+.btn-outline-secondary {
+    border-color: var(--secondary);
+    color: var(--secondary);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--secondary);
+    color: var(--lighter);
+}
+
 #player-database {
     background-color: var(--lighter);
     padding: 15px;
@@ -296,6 +316,26 @@ footer {
     color: var(--darker);
     font-weight: 500;
     margin-top: 2rem;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 8px;
+}
+
+.alert-success {
+    background-color: var(--success);
+    border-color: darken(var(--success), 5%);
+}
+
+.alert-warning {
+    background-color: var(--warning);
+    border-color: darken(var(--warning), 5%);
+}
+
+.alert-error {
+    background-color: var(--error);
+    border-color: darken(var(--error), 5%);
 }
 
 /* Responsividade */
