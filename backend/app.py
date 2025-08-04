@@ -11,16 +11,14 @@ CORS(app)  # Permite requisições de qualquer origem
 
 # Configuração do Firebase Admin SDK
 firebase_config = {
-    "type": "service_account",
-    "project_id": "gerador-times-volei",
-    "private_key_id": "YOUR_PRIVATE_KEY_ID",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
-    "client_email": "YOUR_CLIENT_EMAIL",
-    "client_id": "YOUR_CLIENT_ID",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "YOUR_CLIENT_CERT_URL"
+    "apiKey": "AIzaSyC5tDXJpe-JdC83kd9VE0Tc8V70Dblztu4",
+    "authDomain": "gerador-times-volei.firebaseapp.com",
+    "databaseURL": "https://gerador-times-volei-default-rtdb.firebaseio.com",
+    "projectId": "gerador-times-volei",
+    "storageBucket": "gerador-times-volei.firebasestorage.app",
+    "messagingSenderId": "133601686847",
+    "appId": "1:133601686847:web:9f60913fa7ce7a1dda4f8a",
+    "measurementId": "G-3QQ5PSND5M"
 }
 
 # Inicializar Firebase Admin (substitua pela sua chave de serviço)

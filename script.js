@@ -114,7 +114,8 @@ const elements = {
     savedList: document.getElementById('saved-players-list'),
     submitBtn: document.getElementById('submit-button'),
     cancelEditBtn: document.getElementById('cancel-edit'),
-    toggleSavedBtn: document.getElementById('toggle-saved-players')
+    toggleSavedBtn: document.getElementById('toggle-saved-players'),
+    reloadFirebaseBtn: document.getElementById('reload-firebase-players')
 };
 
 // Inicialização
@@ -137,6 +138,50 @@ async function init() {
     // para garantir que o Firebase seja carregado
     setTimeout(() => {
         syncWithFirebase();
+        // Atualiza novamente a lista após a sincronização
+        setTimeout(() => {
+            updateSavedPlayersList();
+        }, 2000);
+    }, 1000);
+    
+    // Disponibiliza funções globais para testes
+    window.reloadPlayersFromFirebase = reloadPlayersFromFirebase;
+    window.createSamplePlayers = createSamplePlayers;
+    
+    console.log('🔧 Funções disponíveis:');
+    console.log('  - reloadPlayersFromFirebase(): Recarrega jogadores do Firebase');
+    console.log('  - createSamplePlayers(): Cria jogadores de exemplo no Firebase');
+}
+
+// Função para criar jogadores de exemplo (apenas para testes)
+async function createSamplePlayers() {
+    if (!apiConnected) {
+        console.log('❌ API não está conectada. Não é possível criar jogadores de exemplo.');
+        return;
+    }
+    
+    const samplePlayers = [
+        { name: "João Silva", level: "bom", gender: "masculino", isSetter: false },
+        { name: "Maria Santos", level: "ótimo", gender: "feminino", isSetter: true },
+        { name: "Pedro Costa", level: "delicioso", gender: "masculino", isSetter: false },
+        { name: "Ana Oliveira", level: "bom", gender: "feminino", isSetter: false },
+        { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true }
+    ];
+    
+    console.log('🔧 Criando jogadores de exemplo no Firebase...');
+    
+    for (const player of samplePlayers) {
+        const result = await PlayersAPI.createPlayer(player);
+        if (result.success) {
+            console.log(`✅ Jogador ${player.name} criado com sucesso`);
+        } else {
+            console.log(`❌ Erro ao criar jogador ${player.name}:`, result.error);
+        }
+    }
+    
+    // Recarrega os jogadores após criar os exemplos
+    setTimeout(() => {
+        reloadPlayersFromFirebase();
     }, 1000);
 }
 
@@ -154,6 +199,11 @@ function setupEventListeners() {
     elements.clearBtn.addEventListener('click', handleClearPlayers);
     elements.cancelEditBtn.addEventListener('click', cancelEdit);
     elements.toggleSavedBtn.addEventListener('click', toggleSavedPlayersList);
+    
+    // Event listener para o botão de recarregar do Firebase
+    if (elements.reloadFirebaseBtn) {
+        elements.reloadFirebaseBtn.addEventListener('click', reloadPlayersFromFirebase);
+    }
 }
 
 // Funções de integração com API Backend
@@ -178,11 +228,33 @@ async function loadPlayersFromAPI() {
                 if (!existsLocally) {
                     players.push(apiPlayer);
                 }
+                
+                // Adiciona também ao banco de jogadores salvos (se não existir)
+                const existsInSaved = savedPlayers.some(savedPlayer => 
+                    savedPlayer.firebase_id === apiPlayer.firebase_id ||
+                    (savedPlayer.name === apiPlayer.name && savedPlayer.gender === apiPlayer.gender)
+                );
+                
+                if (!existsInSaved) {
+                    const savedPlayer = {
+                        id: apiPlayer.firebase_id,
+                        name: apiPlayer.name,
+                        level: apiPlayer.level,
+                        gender: apiPlayer.gender,
+                        isSetter: apiPlayer.isSetter,
+                        firebase_id: apiPlayer.firebase_id,
+                        createdAt: apiPlayer.createdAt,
+                        lastUsed: apiPlayer.createdAt
+                    };
+                    savedPlayers.push(savedPlayer);
+                }
             });
             
             // Salva localmente
             savePlayers();
+            saveSavedPlayers();
             console.log(`📥 ${apiPlayers.length} jogadores carregados da API`);
+            console.log(`💾 ${result.players.length} jogadores adicionados ao banco de jogadores`);
         }
     } catch (error) {
         console.error('Erro ao carregar jogadores da API:', error);
@@ -201,9 +273,37 @@ async function syncPlayerWithAPI(playerData) {
             console.error('❌ Erro ao sincronizar jogador:', result.error);
         }
     } catch (error) {
-        console.error('❌ Erro de conexão ao sincronizar:', error);
+        console.error('❌ Erro ao sincronizar jogador:', error);
     }
-    return null;
+}
+
+// Função para recarregar jogadores do Firebase/API manualmente
+async function reloadPlayersFromFirebase() {
+    console.log('🔄 Recarregando jogadores do Firebase...');
+    
+    if (apiConnected) {
+        await loadPlayersFromAPI();
+        updatePlayerList();
+        updateSavedPlayersList();
+        showAlert('Jogadores recarregados do Firebase!', 'success');
+    } else {
+        // Tenta reconectar com a API
+        apiConnected = await PlayersAPI.checkAPIHealth();
+        if (apiConnected) {
+            console.log('✅ Reconectado com a API Backend');
+            await loadPlayersFromAPI();
+            updatePlayerList();
+            updateSavedPlayersList();
+            showAlert('Reconectado! Jogadores recarregados do Firebase!', 'success');
+        } else {
+            // Se a API não estiver disponível, tenta sincronizar diretamente com Firebase
+            syncWithFirebase();
+            setTimeout(() => {
+                updateSavedPlayersList();
+                showAlert('Sincronização com Firebase concluída!', 'info');
+            }, 1000);
+        }
+    }
 }
 
 // Funções do Firebase (mantidas para compatibilidade)
@@ -276,13 +376,37 @@ function syncWithFirebase() {
             const data = snapshot.val();
             if (data) {
                 console.log('Jogadores sincronizados do Firebase:');
-                // Processa os dados do Firebase
-                Object.entries(data).forEach(([key, player]) => {
+                
+                // Processa os dados do Firebase e adiciona ao banco de jogadores salvos
+                Object.entries(data).forEach(([firebaseId, player]) => {
                     console.log(`- ${player.name}: ${player.level}, ${player.gender}, Levantador: ${player.isSetter}`);
+                    
+                    // Verifica se o jogador já existe no banco de jogadores salvos
+                    const existsInSaved = savedPlayers.some(savedPlayer => 
+                        savedPlayer.firebase_id === firebaseId ||
+                        (savedPlayer.name === player.name && savedPlayer.gender === player.gender)
+                    );
+                    
+                    if (!existsInSaved) {
+                        const savedPlayer = {
+                            id: firebaseId,
+                            name: player.name,
+                            level: player.level,
+                            gender: player.gender,
+                            isSetter: player.isSetter || false,
+                            firebase_id: firebaseId,
+                            createdAt: player.createdAt || new Date().toISOString(),
+                            lastUsed: player.updatedAt || player.createdAt || new Date().toISOString()
+                        };
+                        savedPlayers.push(savedPlayer);
+                        
+                        console.log(`✅ Jogador ${player.name} adicionado ao banco de jogadores`);
+                    }
                 });
                 
-                // Opcional: Você pode implementar lógica para sincronizar com os dados locais
-                // Por exemplo, mesclar dados do Firebase com dados locais
+                // Salva as alterações e atualiza a interface
+                saveSavedPlayers();
+                updateSavedPlayersList();
             }
         });
     } catch (error) {
@@ -426,12 +550,18 @@ function updateSavedPlayersList() {
         const playerElement = document.createElement('div');
         playerElement.className = 'saved-player';
         playerElement.dataset.id = player.id;
+        
+        // Adiciona indicador visual para jogadores do Firebase
+        const firebaseIndicator = player.firebase_id ? 
+            '<span class="firebase-indicator" title="Jogador sincronizado com Firebase">🔥</span>' : '';
+        
         playerElement.innerHTML = `
             ${player.name}
             <span class="badge role-badge ${player.gender}">
                 ${player.gender.charAt(0).toUpperCase()}
             </span>
             ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
+            ${firebaseIndicator}
             <span class="delete-saved" data-id="${player.id}">&times;</span>
         `;
         
@@ -455,9 +585,10 @@ function addPlayerFromSaved(playerId) {
     if (!player) return;
     
     const exists = players.some(p => 
-        p.name === player.name && 
-        p.gender === player.gender && 
-        p.level === player.level
+        p.firebase_id === player.firebase_id || 
+        (p.name === player.name && 
+         p.gender === player.gender && 
+         p.level === player.level)
     );
     
     if (exists) {
@@ -466,12 +597,13 @@ function addPlayerFromSaved(playerId) {
     }
 
     const newPlayer = {
-        id: Date.now().toString(),
+        id: player.firebase_id || Date.now().toString(),
         name: player.name,
         level: player.level,
         gender: player.gender,
         isSetter: player.isSetter,
-        createdAt: new Date().toISOString()
+        createdAt: player.createdAt || new Date().toISOString(),
+        firebase_id: player.firebase_id
     };
     
     players.push(newPlayer);
