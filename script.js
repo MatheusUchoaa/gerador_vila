@@ -553,7 +553,7 @@ function updateSavedPlayersList() {
         
         // Adiciona indicador visual para jogadores do Firebase
         const firebaseIndicator = player.firebase_id ? 
-            '<span class="firebase-indicator" title="Jogador sincronizado com Firebase">🔥</span>' : '';
+            '<span class="firebase-indicator" title="Jogador sincronizado com Firebase"></span>' : '';
         
         playerElement.innerHTML = `
             ${player.name}

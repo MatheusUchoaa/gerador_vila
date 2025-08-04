@@ -295,8 +295,8 @@ def health_check():
     })
 
 if __name__ == '__main__':
-    print("🚀 Iniciando servidor Flask...")
-    print("📋 Endpoints disponíveis:")
+    print("Iniciando servidor Flask...")
+    print("Endpoints disponíveis:")
     print("   GET    / - Informações da API")
     print("   GET    /players - Lista jogadores")
     print("   POST   /players - Cria jogador")
@@ -304,6 +304,6 @@ if __name__ == '__main__':
     print("   PUT    /players/<id> - Atualiza jogador")
     print("   DELETE /players/<id> - Remove jogador")
     print("   GET    /health - Status da API")
-    print("\n🌐 Servidor rodando em: http://localhost:5000")
+    print("\n Servidor rodando em: http://localhost:5000")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
