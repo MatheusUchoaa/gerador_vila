@@ -18,25 +18,21 @@
     --warning: #FFD166;
     --error: #FF8A8A;
 }
-
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--light);
     color: var(--darker);
     min-height: 100vh;
 }
-
 .container {
     max-width: 1200px;
 }
-
 header {
     background-color: var(--primary);
     color: var(--darker);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     margin-bottom: 2rem;
 }
-
 .logo-container {
     max-width: 200px;
     margin: 0 auto;
@@ -45,36 +41,30 @@ header {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .logo-image {
     width: 100%;
     height: auto;
     display: block;
     border-radius: 4px;
 }
-
 main section {
     background-color: var(--lighter);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     margin-bottom: 2rem;
     border-radius: 8px;
 }
-
 #player-form {
     margin-bottom: 1.5rem;
 }
-
 .form-control, .form-select {
     border-radius: 6px;
     padding: 10px;
     border: 1px solid var(--secondary-light);
 }
-
 .form-control:focus, .form-select:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 0.25rem rgba(255, 215, 0, 0.25);
 }
-
 .level-options, .gender-options {
     background-color: var(--lighter);
     padding: 12px;
@@ -82,105 +72,87 @@ main section {
     border: 1px solid var(--secondary-light);
     margin-top: 8px;
 }
-
 .form-check {
     margin-bottom: 8px;
     padding: 8px 12px;
     border-radius: 6px;
     transition: all 0.2s;
 }
-
 .form-check:hover {
     background-color: var(--accent);
     transform: translateY(-1px);
 }
-
 .form-check-input {
     width: 1.2em;
     height: 1.2em;
     margin-top: 0.2em;
 }
-
 .form-check-input:checked {
     background-color: var(--primary-dark);
     border-color: var(--primary-dark);
 }
-
 .form-check-label {
     margin-left: 8px;
     font-weight: 500;
     cursor: pointer;
 }
-
 #player-setter {
     width: 1.2em;
     height: 1.2em;
     margin-top: 0.2em;
 }
-
 .btn {
     border-radius: 6px;
     font-weight: 600;
     transition: all 0.3s;
     padding: 10px 16px;
 }
-
 .btn-add {
     background-color: var(--primary);
     color: var(--darker);
     border: none;
 }
-
 .btn-add:hover {
     background-color: var(--primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .btn-generate {
     background-color: var(--secondary);
     color: var(--lighter);
     border: none;
 }
-
 .btn-generate:hover {
     background-color: var(--secondary-dark);
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .btn-clear {
     background-color: var(--error);
     color: white;
     border: none;
 }
-
 .btn-clear:hover {
     background-color: #ff6b6b;
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .btn-outline-primary {
     border-color: var(--primary);
     color: var(--primary);
 }
-
 .btn-outline-primary:hover {
     background-color: var(--primary);
     color: var(--darker);
 }
-
 .btn-outline-secondary {
     border-color: var(--secondary);
     color: var(--secondary);
 }
-
 .btn-outline-secondary:hover {
     background-color: var(--secondary);
     color: var(--lighter);
 }
-
 #player-database {
     background-color: var(--lighter);
     padding: 15px;
@@ -188,13 +160,11 @@ main section {
     border: 1px solid var(--secondary-light);
     margin-bottom: 1.5rem;
 }
-
 #saved-players-list {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
-
 .saved-player {
     background-color: var(--primary-light);
     padding: 6px 12px;
@@ -207,29 +177,24 @@ main section {
     border: 1px solid var(--primary-dark);
     cursor: pointer;
 }
-
 .saved-player:hover {
     background-color: var(--primary);
     transform: translateY(-2px);
 }
-
 .firebase-indicator {
     font-size: 0.8rem;
     opacity: 0.8;
     margin-left: 2px;
 }
-
 .firebase-indicator:hover {
     opacity: 1;
 }
-
 #player-list {
     max-height: 300px;
     overflow-y: auto;
     border-radius: 8px;
     border: 1px solid var(--secondary-light);
 }
-
 .list-group-item {
     display: flex;
     justify-content: space-between;
@@ -241,18 +206,15 @@ main section {
     border-bottom: 1px solid var(--secondary-light);
     cursor: pointer;
 }
-
 .list-group-item:hover {
     background-color: var(--accent);
 }
-
 .player-info {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-grow: 1;
 }
-
 .gender-badge {
     color: var(--darker);
     padding: 5px 8px;
@@ -264,15 +226,12 @@ main section {
     justify-content: center;
     min-width: 24px;
 }
-
 .gender-badge.male {
     background-color: var(--male-color);
 }
-
 .gender-badge.female {
     background-color: var(--female-color);
 }
-
 .setter-badge {
     color: var(--darker);
     background-color: var(--warning);
@@ -281,7 +240,6 @@ main section {
     font-size: 0.8rem;
     margin-left: 5px;
 }
-
 .delete-player, .delete-saved {
     color: var(--error);
     font-weight: bold;
@@ -290,25 +248,21 @@ main section {
     border-radius: 50%;
     transition: all 0.2s;
 }
-
 .delete-player:hover, .delete-saved:hover {
     background-color: var(--error);
     color: white;
 }
-
 #team-output {
     background-color: var(--lighter);
     border-left: 4px solid var(--secondary);
     border-radius: 8px;
 }
-
 .team {
     margin-bottom: 20px;
     border: 1px solid var(--secondary-light);
     border-radius: 8px;
     overflow: hidden;
 }
-
 .team h3 {
     color: var(--darker);
     background-color: var(--secondary-light);
@@ -316,38 +270,31 @@ main section {
     margin: 0;
     font-weight: 600;
 }
-
 .team-players {
     border-radius: 0 !important;
 }
-
 footer {
     background-color: var(--primary);
     color: var(--darker);
     font-weight: 500;
     margin-top: 2rem;
 }
-
 /* Alerts */
 .alert {
     border-radius: 8px;
 }
-
 .alert-success {
     background-color: var(--success);
     border-color: darken(var(--success), 5%);
 }
-
 .alert-warning {
     background-color: var(--warning);
     border-color: darken(var(--warning), 5%);
 }
-
 .alert-error {
     background-color: var(--error);
     border-color: darken(var(--error), 5%);
 }
-
 /* Responsividade */
 @media (max-width: 768px) {
     .container {
@@ -375,13 +322,22 @@ footer {
         padding: 6px 8px;
     }
 }
-
 /* Animações */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
 .team {
     animation: fadeIn 0.3s ease-out;
+}
+
+/* Código 2 adicionado abaixo */
+
+.duplicate-highlight {
+    animation: pulseDuplicate 2s;
+}
+@keyframes pulseDuplicate {
+    0% { background-color: inherit; }
+    50% { background-color: #fff3cd; }
+    100% { background-color: inherit; }
 }

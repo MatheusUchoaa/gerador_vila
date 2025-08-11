@@ -1,16 +1,10 @@
-// Firebase Configuration (integrado do firebase-config.js)
-// Your web app's Firebase configurat// Dados dos jogadores (mantidos localmente para compatibilidade)
-let players = JSON.parse(localStorage.getItem('players')) || [];
-let savedPlayers = JSON.parse(localStorage.getItem('savedPlayers')) || [];
-let currentTeams = null;
-let apiConnected = false;
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyC5tDXJpe-JdC83kd9VE0Tc8V70Dblztu4",
   authDomain: "gerador-times-volei.firebaseapp.com",
   databaseURL: "https://gerador-times-volei-default-rtdb.firebaseio.com",
   projectId: "gerador-times-volei",
-  storageBucket: "gerador-times-volei.firebasestorage.app",
+  storageBucket: "gerador-times-volei.appspot.com",
   messagingSenderId: "133601686847",
   appId: "1:133601686847:web:9f60913fa7ce7a1dda4f8a",
   measurementId: "G-3QQ5PSND5M"
@@ -19,15 +13,29 @@ const firebaseConfig = {
 // Configuração da API Backend
 const API_BASE_URL = 'http://localhost:5000';
 
-// Função para salvar jogador com apenas os dados essenciais
-function savePlayerData(name, level, gender, isSetter) {
-  return {
-    name,
-    level, 
-    gender,
-    isSetter
-  };
-}
+// Dados dos jogadores
+let players = JSON.parse(localStorage.getItem('players')) || [];
+let savedPlayers = JSON.parse(localStorage.getItem('savedPlayers')) || [];
+let currentTeams = null;
+let apiConnected = false;
+
+// Elementos do DOM
+const elements = {
+    form: document.getElementById('player-form'),
+    idInput: document.getElementById('player-id'),
+    nameInput: document.getElementById('player-name'),
+    list: document.getElementById('player-list'),
+    teamOutput: document.getElementById('team-output'),
+    generateBtn: document.getElementById('generate-team'),
+    regenerateBtn: document.getElementById('regenerate-team'),
+    clearBtn: document.getElementById('clear-players'),
+    countElement: document.getElementById('player-count'),
+    savedList: document.getElementById('saved-players-list'),
+    submitBtn: document.getElementById('submit-button'),
+    cancelEditBtn: document.getElementById('cancel-edit'),
+    toggleSavedBtn: document.getElementById('toggle-saved-players'),
+    reloadFirebaseBtn: document.getElementById('reload-firebase-players')
+};
 
 // Funções para comunicação com a API Backend
 class PlayersAPI {
@@ -100,27 +108,8 @@ class PlayersAPI {
   }
 }
 
-// Elementos do DOM
-const elements = {
-    form: document.getElementById('player-form'),
-    idInput: document.getElementById('player-id'),
-    nameInput: document.getElementById('player-name'),
-    list: document.getElementById('player-list'),
-    teamOutput: document.getElementById('team-output'),
-    generateBtn: document.getElementById('generate-team'),
-    regenerateBtn: document.getElementById('regenerate-team'),
-    clearBtn: document.getElementById('clear-players'),
-    countElement: document.getElementById('player-count'),
-    savedList: document.getElementById('saved-players-list'),
-    submitBtn: document.getElementById('submit-button'),
-    cancelEditBtn: document.getElementById('cancel-edit'),
-    toggleSavedBtn: document.getElementById('toggle-saved-players'),
-    reloadFirebaseBtn: document.getElementById('reload-firebase-players')
-};
-
 // Inicialização
 async function init() {
-    // Verificar conexão com a API Backend
     apiConnected = await PlayersAPI.checkAPIHealth();
     if (apiConnected) {
         console.log('✅ API Backend conectada');
@@ -134,11 +123,8 @@ async function init() {
     setupEventListeners();
     initializeTooltips();
     
-    // Inicializar sincronização com Firebase após um pequeno delay
-    // para garantir que o Firebase seja carregado
     setTimeout(() => {
         syncWithFirebase();
-        // Atualiza novamente a lista após a sincronização
         setTimeout(() => {
             updateSavedPlayersList();
         }, 2000);
@@ -153,38 +139,7 @@ async function init() {
     console.log('  - createSamplePlayers(): Cria jogadores de exemplo no Firebase');
 }
 
-// Função para criar jogadores de exemplo (apenas para testes)
-async function createSamplePlayers() {
-    if (!apiConnected) {
-        console.log('❌ API não está conectada. Não é possível criar jogadores de exemplo.');
-        return;
-    }
-    
-    const samplePlayers = [
-        { name: "João Silva", level: "bom", gender: "masculino", isSetter: false },
-        { name: "Maria Santos", level: "ótimo", gender: "feminino", isSetter: true },
-        { name: "Pedro Costa", level: "delicioso", gender: "masculino", isSetter: false },
-        { name: "Ana Oliveira", level: "bom", gender: "feminino", isSetter: false },
-        { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true }
-    ];
-    
-    console.log('🔧 Criando jogadores de exemplo no Firebase...');
-    
-    for (const player of samplePlayers) {
-        const result = await PlayersAPI.createPlayer(player);
-        if (result.success) {
-            console.log(`✅ Jogador ${player.name} criado com sucesso`);
-        } else {
-            console.log(`❌ Erro ao criar jogador ${player.name}:`, result.error);
-        }
-    }
-    
-    // Recarrega os jogadores após criar os exemplos
-    setTimeout(() => {
-        reloadPlayersFromFirebase();
-    }, 1000);
-}
-
+// Funções auxiliares
 function initializeTooltips() {
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -200,221 +155,12 @@ function setupEventListeners() {
     elements.cancelEditBtn.addEventListener('click', cancelEdit);
     elements.toggleSavedBtn.addEventListener('click', toggleSavedPlayersList);
     
-    // Event listener para o botão de recarregar do Firebase
     if (elements.reloadFirebaseBtn) {
         elements.reloadFirebaseBtn.addEventListener('click', reloadPlayersFromFirebase);
     }
 }
 
-// Funções de integração com API Backend
-async function loadPlayersFromAPI() {
-    try {
-        const result = await PlayersAPI.getAllPlayers();
-        if (result.success) {
-            // Converte jogadores da API para o formato local
-            const apiPlayers = result.players.map(player => ({
-                id: player.firebase_id,
-                name: player.name,
-                level: player.level,
-                gender: player.gender,
-                isSetter: player.isSetter,
-                createdAt: player.createdAt || new Date().toISOString(),
-                firebase_id: player.firebase_id
-            }));
-            
-            // Mescla com jogadores locais (evita duplicatas)
-            apiPlayers.forEach(apiPlayer => {
-                const existsLocally = players.some(localPlayer => localPlayer.firebase_id === apiPlayer.firebase_id);
-                if (!existsLocally) {
-                    players.push(apiPlayer);
-                }
-                
-                // Adiciona também ao banco de jogadores salvos (se não existir)
-                const existsInSaved = savedPlayers.some(savedPlayer => 
-                    savedPlayer.firebase_id === apiPlayer.firebase_id ||
-                    (savedPlayer.name === apiPlayer.name && savedPlayer.gender === apiPlayer.gender)
-                );
-                
-                if (!existsInSaved) {
-                    const savedPlayer = {
-                        id: apiPlayer.firebase_id,
-                        name: apiPlayer.name,
-                        level: apiPlayer.level,
-                        gender: apiPlayer.gender,
-                        isSetter: apiPlayer.isSetter,
-                        firebase_id: apiPlayer.firebase_id,
-                        createdAt: apiPlayer.createdAt,
-                        lastUsed: apiPlayer.createdAt
-                    };
-                    savedPlayers.push(savedPlayer);
-                }
-            });
-            
-            // Salva localmente
-            savePlayers();
-            saveSavedPlayers();
-            console.log(`📥 ${apiPlayers.length} jogadores carregados da API`);
-            console.log(`💾 ${result.players.length} jogadores adicionados ao banco de jogadores`);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar jogadores da API:', error);
-    }
-}
-
-async function syncPlayerWithAPI(playerData) {
-    if (!apiConnected) return;
-    
-    try {
-        const result = await PlayersAPI.createPlayer(playerData);
-        if (result.success) {
-            console.log('✅ Jogador sincronizado com API:', result.player.name);
-            return result.player;
-        } else {
-            console.error('❌ Erro ao sincronizar jogador:', result.error);
-        }
-    } catch (error) {
-        console.error('❌ Erro ao sincronizar jogador:', error);
-    }
-}
-
-// Função para recarregar jogadores do Firebase/API manualmente
-async function reloadPlayersFromFirebase() {
-    console.log('🔄 Recarregando jogadores do Firebase...');
-    
-    if (apiConnected) {
-        await loadPlayersFromAPI();
-        updatePlayerList();
-        updateSavedPlayersList();
-        showAlert('Jogadores recarregados do Firebase!', 'success');
-    } else {
-        // Tenta reconectar com a API
-        apiConnected = await PlayersAPI.checkAPIHealth();
-        if (apiConnected) {
-            console.log('✅ Reconectado com a API Backend');
-            await loadPlayersFromAPI();
-            updatePlayerList();
-            updateSavedPlayersList();
-            showAlert('Reconectado! Jogadores recarregados do Firebase!', 'success');
-        } else {
-            // Se a API não estiver disponível, tenta sincronizar diretamente com Firebase
-            syncWithFirebase();
-            setTimeout(() => {
-                updateSavedPlayersList();
-                showAlert('Sincronização com Firebase concluída!', 'info');
-            }, 1000);
-        }
-    }
-}
-
-// Funções do Firebase (mantidas para compatibilidade)
-function validatePlayerData(name, level, gender, isSetter) {
-    // Validações básicas dos dados do jogador
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new Error('Nome do jogador é obrigatório');
-    }
-    
-    const validLevels = ['ok', 'bom', 'ótimo', 'delicioso'];
-    if (!validLevels.includes(level)) {
-        throw new Error('Nível do jogador deve ser: ok, bom, ótimo ou delicioso');
-    }
-    
-    const validGenders = ['masculino', 'feminino'];
-    if (!validGenders.includes(gender)) {
-        throw new Error('Gênero deve ser: masculino ou feminino');
-    }
-    
-    if (typeof isSetter !== 'boolean') {
-        throw new Error('isSetter deve ser um valor booleano');
-    }
-    
-    return true;
-}
-
-function savePlayerToDatabase(name, level, gender, isSetter) {
-    // Verifica se o Firebase está disponível
-    if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebasePush === 'undefined') {
-        console.log('Firebase não está disponível');
-        return;
-    }
-
-    try {
-        // Valida os dados antes de salvar
-        validatePlayerData(name, level, gender, isSetter);
-        
-        const playersRef = window.firebaseRef(window.firebaseDatabase, 'players');
-        
-        const playerData = {
-            name: name.trim(),
-            level,
-            gender,
-            isSetter
-        };
-
-        window.firebasePush(playersRef, playerData)
-            .then(() => {
-                console.log('Jogador salvo no Firebase com sucesso:', playerData);
-            })
-            .catch((error) => {
-                console.error('Erro ao salvar jogador no Firebase:', error);
-            });
-    } catch (error) {
-        console.error('Erro de validação ou acesso ao Firebase:', error);
-    }
-}
-
-function syncWithFirebase() {
-    // Verifica se o Firebase está disponível
-    if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseOnValue === 'undefined') {
-        console.log('Firebase não está disponível para sincronização');
-        return;
-    }
-
-    try {
-        const playersRef = window.firebaseRef(window.firebaseDatabase, 'players');
-        
-        window.firebaseOnValue(playersRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                console.log('Jogadores sincronizados do Firebase:');
-                
-                // Processa os dados do Firebase e adiciona ao banco de jogadores salvos
-                Object.entries(data).forEach(([firebaseId, player]) => {
-                    console.log(`- ${player.name}: ${player.level}, ${player.gender}, Levantador: ${player.isSetter}`);
-                    
-                    // Verifica se o jogador já existe no banco de jogadores salvos
-                    const existsInSaved = savedPlayers.some(savedPlayer => 
-                        savedPlayer.firebase_id === firebaseId ||
-                        (savedPlayer.name === player.name && savedPlayer.gender === player.gender)
-                    );
-                    
-                    if (!existsInSaved) {
-                        const savedPlayer = {
-                            id: firebaseId,
-                            name: player.name,
-                            level: player.level,
-                            gender: player.gender,
-                            isSetter: player.isSetter || false,
-                            firebase_id: firebaseId,
-                            createdAt: player.createdAt || new Date().toISOString(),
-                            lastUsed: player.updatedAt || player.createdAt || new Date().toISOString()
-                        };
-                        savedPlayers.push(savedPlayer);
-                        
-                        console.log(`✅ Jogador ${player.name} adicionado ao banco de jogadores`);
-                    }
-                });
-                
-                // Salva as alterações e atualiza a interface
-                saveSavedPlayers();
-                updateSavedPlayersList();
-            }
-        });
-    } catch (error) {
-        console.error('Erro ao sincronizar com Firebase:', error);
-    }
-}
-
-// Funções principais
+// Funções de CRUD com sincronização
 async function handleAddPlayer(e) {
     e.preventDefault();
     
@@ -448,41 +194,37 @@ async function addPlayer(name, level, gender, isSetter = false) {
         createdAt: new Date().toISOString()
     };
     
-    // Adiciona localmente primeiro
     players.push(newPlayer);
     savePlayers();
     updatePlayerList();
     showAlert(`Jogador ${name} adicionado com sucesso!`, 'success');
     
-    // Tenta sincronizar com a API Backend
     if (apiConnected) {
-        const playerData = savePlayerData(name, level, gender, isSetter);
+        const playerData = { name, level, gender, isSetter };
         const apiPlayer = await syncPlayerWithAPI(playerData);
         
         if (apiPlayer) {
-            // Atualiza o jogador local com o ID do Firebase
             const playerIndex = players.findIndex(p => p.id === newPlayer.id);
             if (playerIndex !== -1) {
                 players[playerIndex].firebase_id = apiPlayer.firebase_id;
                 savePlayers();
             }
-            
-            // Atualiza o banco de jogadores salvos
             savePlayerToSavedDatabase(name, level, gender, isSetter, apiPlayer.firebase_id);
         }
     } else {
-        // Fallback: salvar no Firebase diretamente se a API não estiver disponível
-        savePlayerToDatabase(name, level, gender, isSetter);
+        // Fallback: salvar apenas no banco local de jogadores salvos
         savePlayerToSavedDatabase(name, level, gender, isSetter);
     }
 }
 
-function updatePlayer(id, name, level, gender, isSetter) {
+async function updatePlayer(id, name, level, gender, isSetter) {
     const playerIndex = players.findIndex(p => p.id === id);
     if (playerIndex === -1) return;
     
+    const oldPlayer = players[playerIndex];
+    
     players[playerIndex] = {
-        ...players[playerIndex],
+        ...oldPlayer,
         name,
         level,
         gender,
@@ -492,145 +234,206 @@ function updatePlayer(id, name, level, gender, isSetter) {
     savePlayers();
     updatePlayerList();
     showAlert(`Jogador ${name} atualizado com sucesso!`, 'success');
-}
-
-function resetForm() {
-    elements.form.reset();
-    elements.idInput.value = '';
-    elements.submitBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Adicionar Jogador';
-    elements.cancelEditBtn.style.display = 'none';
-    elements.nameInput.focus();
-}
-
-function cancelEdit() {
-    resetForm();
-}
-
-function savePlayerToSavedDatabase(name, level, gender, isSetter = false, firebase_id = null) {
-    const existingIndex = savedPlayers.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
     
-    if (existingIndex === -1) {
-        savedPlayers.push({
-            id: Date.now().toString(),
+    if (apiConnected && oldPlayer.firebase_id) {
+        const playerData = { name, level, gender, isSetter };
+        const result = await PlayersAPI.updatePlayer(oldPlayer.firebase_id, playerData);
+        
+        if (result.success) {
+            console.log('✅ Jogador atualizado na API:', name);
+        } else {
+            console.error('❌ Erro ao atualizar jogador na API:', result.error);
+        }
+    } else if (oldPlayer.firebase_id) {
+        // Fallback: apenas atualiza no banco local se não há API disponível
+        console.log('⚠️ API não disponível, mantendo dados locais apenas');
+    }
+    
+    const savedPlayerIndex = savedPlayers.findIndex(p => p.id === id || p.firebase_id === oldPlayer.firebase_id);
+    if (savedPlayerIndex !== -1) {
+        savedPlayers[savedPlayerIndex] = {
+            ...savedPlayers[savedPlayerIndex],
             name,
             level,
             gender,
-            isSetter,
-            firebase_id: firebase_id,
-            lastUsed: new Date().toISOString()
-        });
-    } else {
-        savedPlayers[existingIndex] = {
-            ...savedPlayers[existingIndex],
-            level,
-            gender,
-            isSetter,
-            firebase_id: firebase_id || savedPlayers[existingIndex].firebase_id,
-            lastUsed: new Date().toISOString()
+            isSetter
         };
+        saveSavedPlayers();
+        updateSavedPlayersList();
     }
-    
-    saveSavedPlayers();
-    updateSavedPlayersList();
 }
 
-function updateSavedPlayersList() {
-    elements.savedList.innerHTML = '';
-    
-    if (savedPlayers.length === 0) {
-        elements.savedList.innerHTML = '<p class="text-muted">Nenhum jogador salvo ainda.</p>';
-        return;
-    }
-    
-    const sortedPlayers = [...savedPlayers].sort((a, b) => 
-        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
-    );
-    
-    sortedPlayers.forEach(player => {
-        const playerElement = document.createElement('div');
-        playerElement.className = 'saved-player';
-        playerElement.dataset.id = player.id;
-        
-        // Adiciona indicador visual para jogadores do Firebase
-        const firebaseIndicator = player.firebase_id ? 
-            '<span class="firebase-indicator" title="Jogador sincronizado com Firebase"></span>' : '';
-        
-        playerElement.innerHTML = `
-            ${player.name}
-            <span class="badge role-badge ${player.gender}">
-                ${player.gender.charAt(0).toUpperCase()}
-            </span>
-            ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
-            ${firebaseIndicator}
-            <span class="delete-saved" data-id="${player.id}">&times;</span>
-        `;
-        
-        playerElement.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('delete-saved')) {
-                addPlayerFromSaved(player.id);
-            }
-        });
-        
-        playerElement.querySelector('.delete-saved').addEventListener('click', (e) => {
-            e.stopPropagation();
-            removeSavedPlayer(player.id);
-        });
-        
-        elements.savedList.appendChild(playerElement);
-    });
-}
-
-function addPlayerFromSaved(playerId) {
-    const player = savedPlayers.find(p => p.id === playerId);
-    if (!player) return;
-    
-    const exists = players.some(p => 
-        p.firebase_id === player.firebase_id || 
-        (p.name === player.name && 
-         p.gender === player.gender && 
-         p.level === player.level)
-    );
-    
-    if (exists) {
-        showAlert(`${player.name} já está na lista!`, 'warning');
-        return;
-    }
-
-    const newPlayer = {
-        id: player.firebase_id || Date.now().toString(),
-        name: player.name,
-        level: player.level,
-        gender: player.gender,
-        isSetter: player.isSetter,
-        createdAt: player.createdAt || new Date().toISOString(),
-        firebase_id: player.firebase_id
-    };
-    
-    players.push(newPlayer);
-    savePlayers();
-    updatePlayerList();
-    showAlert(`Jogador ${player.name} adicionado!`, 'success');
-}
-
-function toggleSavedPlayersList() {
-    const isHidden = elements.savedList.style.display === 'none';
-    elements.savedList.style.display = isHidden ? 'flex' : 'none';
-    elements.toggleSavedBtn.innerHTML = isHidden 
-        ? '<i class="bi bi-chevron-up"></i>' 
-        : '<i class="bi bi-chevron-down"></i>';
-}
-
-function removeSavedPlayer(playerId) {
-    const playerIndex = savedPlayers.findIndex(p => p.id === playerId);
+async function removePlayer(playerId) {
+    const playerIndex = players.findIndex(p => p.id === playerId);
     if (playerIndex === -1) return;
     
-    const playerName = savedPlayers[playerIndex].name;
-    savedPlayers.splice(playerIndex, 1);
-    saveSavedPlayers();
-    updateSavedPlayersList();
-    showAlert(`Jogador ${playerName} removido do banco de dados!`, 'warning');
+    const player = players[playerIndex];
+    const playerName = player.name;
+    
+    players.splice(playerIndex, 1);
+    savePlayers();
+    updatePlayerList();
+    showAlert(`Jogador ${playerName} removido!`, 'warning');
+    
+    if (apiConnected && player.firebase_id) {
+        const result = await PlayersAPI.deletePlayer(player.firebase_id);
+        
+        if (result.success) {
+            console.log('✅ Jogador removido da API:', playerName);
+            
+            const savedPlayerIndex = savedPlayers.findIndex(p => p.firebase_id === player.firebase_id);
+            if (savedPlayerIndex !== -1) {
+                savedPlayers.splice(savedPlayerIndex, 1);
+                saveSavedPlayers();
+                updateSavedPlayersList();
+            }
+        } else {
+            console.error('❌ Erro ao remover jogador da API:', result.error);
+        }
+    }
 }
 
+// Funções de sincronização com Firebase/API
+async function loadPlayersFromAPI() {
+    try {
+        const result = await PlayersAPI.getAllPlayers();
+        if (result.success) {
+            const apiPlayers = result.players.map(player => ({
+                id: player.firebase_id,
+                name: player.name,
+                level: player.level,
+                gender: player.gender,
+                isSetter: player.isSetter,
+                createdAt: player.createdAt || new Date().toISOString(),
+                firebase_id: player.firebase_id
+            }));
+            
+            apiPlayers.forEach(apiPlayer => {
+                const existsLocally = players.some(localPlayer => localPlayer.firebase_id === apiPlayer.firebase_id);
+                if (!existsLocally) {
+                    players.push(apiPlayer);
+                }
+                
+                const existsInSaved = savedPlayers.some(savedPlayer => 
+                    savedPlayer.firebase_id === apiPlayer.firebase_id ||
+                    (savedPlayer.name === apiPlayer.name && savedPlayer.gender === apiPlayer.gender)
+                );
+                
+                if (!existsInSaved) {
+                    const savedPlayer = {
+                        id: apiPlayer.firebase_id,
+                        name: apiPlayer.name,
+                        level: apiPlayer.level,
+                        gender: apiPlayer.gender,
+                        isSetter: apiPlayer.isSetter,
+                        firebase_id: apiPlayer.firebase_id,
+                        createdAt: apiPlayer.createdAt,
+                        lastUsed: apiPlayer.createdAt
+                    };
+                    savedPlayers.push(savedPlayer);
+                }
+            });
+            
+            savePlayers();
+            saveSavedPlayers();
+            console.log(`📥 ${apiPlayers.length} jogadores carregados da API`);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar jogadores da API:', error);
+    }
+}
+
+async function syncPlayerWithAPI(playerData) {
+    if (!apiConnected) return;
+    
+    try {
+        const result = await PlayersAPI.createPlayer(playerData);
+        if (result.success) {
+            console.log('✅ Jogador sincronizado com API:', result.player.name);
+            return result.player;
+        } else {
+            console.error('❌ Erro ao sincronizar jogador:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao sincronizar jogador:', error);
+    }
+}
+
+async function reloadPlayersFromFirebase() {
+    console.log('🔄 Recarregando jogadores do Firebase...');
+    
+    if (apiConnected) {
+        await loadPlayersFromAPI();
+        updatePlayerList();
+        updateSavedPlayersList();
+        showAlert('Jogadores recarregados do Firebase!', 'success');
+    } else {
+        apiConnected = await PlayersAPI.checkAPIHealth();
+        if (apiConnected) {
+            console.log('✅ Reconectado com a API Backend');
+            await loadPlayersFromAPI();
+            updatePlayerList();
+            updateSavedPlayersList();
+            showAlert('Reconectado! Jogadores recarregados do Firebase!', 'success');
+        } else {
+            syncWithFirebase();
+            setTimeout(() => {
+                updateSavedPlayersList();
+                showAlert('Sincronização com Firebase concluída!', 'info');
+            }, 1000);
+        }
+    }
+}
+
+function syncWithFirebase() {
+    if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseOnValue === 'undefined') {
+        console.log('Firebase não está disponível para sincronização');
+        return;
+    }
+
+    try {
+        const playersRef = window.firebaseRef(window.firebaseDatabase, 'players');
+        
+        window.firebaseOnValue(playersRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                console.log('Jogadores sincronizados do Firebase:');
+                
+                Object.entries(data).forEach(([firebaseId, player]) => {
+                    console.log(`- ${player.name}: ${player.level}, ${player.gender}, Levantador: ${player.isSetter}`);
+                    
+                    const existsInSaved = savedPlayers.some(savedPlayer => 
+                        savedPlayer.firebase_id === firebaseId ||
+                        (savedPlayer.name === player.name && savedPlayer.gender === player.gender)
+                    );
+                    
+                    if (!existsInSaved) {
+                        const savedPlayer = {
+                            id: firebaseId,
+                            name: player.name,
+                            level: player.level,
+                            gender: player.gender,
+                            isSetter: player.isSetter || false,
+                            firebase_id: firebaseId,
+                            createdAt: player.createdAt || new Date().toISOString(),
+                            lastUsed: player.updatedAt || player.createdAt || new Date().toISOString()
+                        };
+                        savedPlayers.push(savedPlayer);
+                        
+                        console.log(`✅ Jogador ${player.name} adicionado ao banco de jogadores`);
+                    }
+                });
+                
+                saveSavedPlayers();
+                updateSavedPlayersList();
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao sincronizar com Firebase:', error);
+    }
+}
+
+// Funções de interface
 function updatePlayerList() {
     elements.list.innerHTML = '';
     
@@ -701,17 +504,158 @@ function editPlayer(id) {
     elements.nameInput.focus();
 }
 
-function removePlayer(playerId) {
-    const playerIndex = players.findIndex(p => p.id === playerId);
-    if (playerIndex === -1) return;
-    
-    const playerName = players[playerIndex].name;
-    players.splice(playerIndex, 1);
-    savePlayers();
-    updatePlayerList();
-    showAlert(`Jogador ${playerName} removido!`, 'warning');
+function resetForm() {
+    elements.form.reset();
+    elements.idInput.value = '';
+    elements.submitBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Adicionar Jogador';
+    elements.cancelEditBtn.style.display = 'none';
+    elements.nameInput.focus();
 }
 
+function cancelEdit() {
+    resetForm();
+}
+
+// Funções para jogadores salvos
+function savePlayerToSavedDatabase(name, level, gender, isSetter = false, firebase_id = null) {
+    const existingIndex = savedPlayers.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+    
+    if (existingIndex === -1) {
+        savedPlayers.push({
+            id: firebase_id || Date.now().toString(),
+            name,
+            level,
+            gender,
+            isSetter,
+            firebase_id,
+            lastUsed: new Date().toISOString()
+        });
+    } else {
+        savedPlayers[existingIndex] = {
+            ...savedPlayers[existingIndex],
+            level,
+            gender,
+            isSetter,
+            firebase_id: firebase_id || savedPlayers[existingIndex].firebase_id,
+            lastUsed: new Date().toISOString()
+        };
+    }
+    
+    saveSavedPlayers();
+    updateSavedPlayersList();
+}
+
+function updateSavedPlayersList() {
+    elements.savedList.innerHTML = '';
+    
+    if (savedPlayers.length === 0) {
+        elements.savedList.innerHTML = '<p class="text-muted">Nenhum jogador salvo ainda.</p>';
+        return;
+    }
+    
+    const sortedPlayers = [...savedPlayers].sort((a, b) => 
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+    );
+    
+    sortedPlayers.forEach(player => {
+        const playerElement = document.createElement('div');
+        playerElement.className = 'saved-player';
+        playerElement.dataset.id = player.id;
+        
+        const firebaseIndicator = player.firebase_id ? 
+            '<span class="firebase-indicator" title="Jogador sincronizado com Firebase">🔥</span>' : '';
+        
+        playerElement.innerHTML = `
+            ${player.name}
+            <span class="badge role-badge ${player.gender}">
+                ${player.gender.charAt(0).toUpperCase()}
+            </span>
+            ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
+            ${firebaseIndicator}
+            <span class="delete-saved" data-id="${player.id}">&times;</span>
+        `;
+        
+        playerElement.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('delete-saved')) {
+                addPlayerFromSaved(player.id);
+            }
+        });
+        
+        playerElement.querySelector('.delete-saved').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeSavedPlayer(player.id);
+        });
+        
+        elements.savedList.appendChild(playerElement);
+    });
+}
+
+function addPlayerFromSaved(playerId) {
+    const player = savedPlayers.find(p => p.id === playerId);
+    if (!player) return;
+    
+    const exists = players.some(p => {
+        if (p.firebase_id && player.firebase_id) {
+            return p.firebase_id === player.firebase_id;
+        }
+        return p.name.toLowerCase() === player.name.toLowerCase() && 
+               p.gender === player.gender && 
+               p.level === player.level;
+    });
+    
+    if (exists) {
+        const existingPlayerElement = [...elements.list.children].find(li => {
+            const playerName = li.querySelector('.player-name').textContent;
+            return playerName.toLowerCase() === player.name.toLowerCase();
+        });
+        
+        if (existingPlayerElement) {
+            existingPlayerElement.classList.add('duplicate-highlight');
+            setTimeout(() => {
+                existingPlayerElement.classList.remove('duplicate-highlight');
+            }, 2000);
+        }
+        
+        showAlert(`${player.name} já está na lista!`, 'warning');
+        return;
+    }
+
+    const newPlayer = {
+        id: player.firebase_id || Date.now().toString(),
+        name: player.name,
+        level: player.level,
+        gender: player.gender,
+        isSetter: player.isSetter,
+        createdAt: player.createdAt || new Date().toISOString(),
+        firebase_id: player.firebase_id
+    };
+    
+    players.push(newPlayer);
+    savePlayers();
+    updatePlayerList();
+    showAlert(`Jogador ${player.name} adicionado!`, 'success');
+}
+
+function toggleSavedPlayersList() {
+    const isHidden = elements.savedList.style.display === 'none';
+    elements.savedList.style.display = isHidden ? 'flex' : 'none';
+    elements.toggleSavedBtn.innerHTML = isHidden 
+        ? '<i class="bi bi-chevron-up"></i>' 
+        : '<i class="bi bi-chevron-down"></i>';
+}
+
+function removeSavedPlayer(playerId) {
+    const playerIndex = savedPlayers.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) return;
+    
+    const playerName = savedPlayers[playerIndex].name;
+    savedPlayers.splice(playerIndex, 1);
+    saveSavedPlayers();
+    updateSavedPlayersList();
+    showAlert(`Jogador ${playerName} removido do banco de dados!`, 'warning');
+}
+
+// Funções para geração de times
 function handleGenerateTeams() {
     if (players.length < 2) {
         showAlert('Você precisa de pelo menos 2 jogadores para formar times!', 'error');
@@ -748,6 +692,7 @@ function generateTeams(numTeams) {
     showAlert(`${teams.length} novos times gerados com sucesso!`, 'success');
 }
 
+// Funções auxiliares para geração de times
 function groupPlayersByLevel(players) {
     const levelValues = { 'delicioso': 4, 'ótimo': 3, 'bom': 2, 'ok': 1 };
     const levels = {};
@@ -930,6 +875,7 @@ function clearPlayers() {
     elements.regenerateBtn.style.display = 'none';
 }
 
+// Funções utilitárias
 function savePlayers() {
     localStorage.setItem('players', JSON.stringify(players));
 }
@@ -973,6 +919,37 @@ function calculateSuggestedTeams() {
         femalePlayers
     ) : Math.floor(players.length / minPlayersPerTeam);
     return maxSuggested || 2;
+}
+
+// Funções de exemplo para testes
+async function createSamplePlayers() {
+    if (!apiConnected) {
+        console.log('❌ API não está conectada. Não é possível criar jogadores de exemplo.');
+        return;
+    }
+    
+    const samplePlayers = [
+        { name: "João Silva", level: "bom", gender: "masculino", isSetter: false },
+        { name: "Maria Santos", level: "ótimo", gender: "feminino", isSetter: true },
+        { name: "Pedro Costa", level: "delicioso", gender: "masculino", isSetter: false },
+        { name: "Ana Oliveira", level: "bom", gender: "feminino", isSetter: false },
+        { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true }
+    ];
+    
+    console.log('🔧 Criando jogadores de exemplo no Firebase...');
+    
+    for (const player of samplePlayers) {
+        const result = await PlayersAPI.createPlayer(player);
+        if (result.success) {
+            console.log(`✅ Jogador ${player.name} criado com sucesso`);
+        } else {
+            console.log(`❌ Erro ao criar jogador ${player.name}:`, result.error);
+        }
+    }
+    
+    setTimeout(() => {
+        reloadPlayersFromFirebase();
+    }, 1000);
 }
 
 // Inicializa a aplicação
