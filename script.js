@@ -133,10 +133,12 @@ async function init() {
     // Disponibiliza funções globais para testes
     window.reloadPlayersFromFirebase = reloadPlayersFromFirebase;
     window.createSamplePlayers = createSamplePlayers;
+    window.testFirebaseConnection = testFirebaseConnection;
     
     console.log('🔧 Funções disponíveis:');
     console.log('  - reloadPlayersFromFirebase(): Recarrega jogadores do Firebase');
     console.log('  - createSamplePlayers(): Cria jogadores de exemplo no Firebase');
+    console.log('  - testFirebaseConnection(): Testa conexão com Firebase');
 }
 
 // Funções auxiliares
@@ -185,6 +187,16 @@ async function handleAddPlayer(e) {
 }
 
 async function addPlayer(name, level, gender, isSetter = false) {
+    // Primeiro verifica se já existe um jogador com o mesmo nome
+    const existingPlayer = players.find(p => 
+        p.name.toLowerCase() === name.toLowerCase() && p.gender === gender
+    );
+    
+    if (existingPlayer) {
+        showAlert(`Jogador ${name} já existe na lista!`, 'warning');
+        return;
+    }
+    
     const newPlayer = {
         id: Date.now().toString(),
         name,
@@ -194,26 +206,38 @@ async function addPlayer(name, level, gender, isSetter = false) {
         createdAt: new Date().toISOString()
     };
     
+    // Adiciona à lista local primeiro
     players.push(newPlayer);
     savePlayers();
     updatePlayerList();
     showAlert(`Jogador ${name} adicionado com sucesso!`, 'success');
     
+    // Tenta sincronizar com Firebase via API
     if (apiConnected) {
+        console.log('🔄 Sincronizando com Firebase via API...');
         const playerData = { name, level, gender, isSetter };
         const apiPlayer = await syncPlayerWithAPI(playerData);
         
-        if (apiPlayer) {
+        if (apiPlayer && apiPlayer.firebase_id) {
+            // Atualiza o jogador local com o ID do Firebase
             const playerIndex = players.findIndex(p => p.id === newPlayer.id);
             if (playerIndex !== -1) {
                 players[playerIndex].firebase_id = apiPlayer.firebase_id;
                 savePlayers();
+                console.log(`✅ Jogador ${name} sincronizado com Firebase (ID: ${apiPlayer.firebase_id})`);
             }
+            
+            // Adiciona ao banco de jogadores salvos
             savePlayerToSavedDatabase(name, level, gender, isSetter, apiPlayer.firebase_id);
+        } else {
+            console.log(`⚠️ Falha na sincronização via API para ${name}, tentando Firebase direto`);
+            // Fallback: tenta salvar diretamente no Firebase
+            await savePlayerDirectlyToFirebase(name, level, gender, isSetter, newPlayer.id);
         }
     } else {
-        // Fallback: salvar apenas no banco local de jogadores salvos
-        savePlayerToSavedDatabase(name, level, gender, isSetter);
+        console.log('⚠️ API não disponível, tentando Firebase direto...');
+        // Se API não estiver disponível, tenta Firebase direto
+        await savePlayerDirectlyToFirebase(name, level, gender, isSetter, newPlayer.id);
     }
 }
 
@@ -344,7 +368,7 @@ async function loadPlayersFromAPI() {
 }
 
 async function syncPlayerWithAPI(playerData) {
-    if (!apiConnected) return;
+    if (!apiConnected) return null;
     
     try {
         const result = await PlayersAPI.createPlayer(playerData);
@@ -353,35 +377,177 @@ async function syncPlayerWithAPI(playerData) {
             return result.player;
         } else {
             console.error('❌ Erro ao sincronizar jogador:', result.error);
+            return null;
         }
     } catch (error) {
         console.error('❌ Erro ao sincronizar jogador:', error);
+        return null;
+    }
+}
+
+// Função para salvar diretamente no Firebase quando API não funciona
+async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, localId) {
+    // Verifica se o Firebase está disponível
+    if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseSet === 'undefined') {
+        console.log('❌ Firebase não está disponível para salvamento direto');
+        // Adiciona ao banco local mesmo assim
+        savePlayerToSavedDatabase(name, level, gender, isSetter);
+        return;
+    }
+
+    try {
+        console.log('🔄 Tentando salvar diretamente no Firebase...');
+        
+        const playerData = {
+            name,
+            level,
+            gender,
+            isSetter,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Gera um ID único para o Firebase
+        const firebaseId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const playerRef = window.firebaseRef(window.firebaseDatabase, `players/${firebaseId}`);
+        
+        await window.firebaseSet(playerRef, playerData);
+        
+        console.log(`✅ Jogador ${name} salvo diretamente no Firebase (ID: ${firebaseId})`);
+        
+        // Atualiza o jogador local com o ID do Firebase
+        const playerIndex = players.findIndex(p => p.id === localId);
+        if (playerIndex !== -1) {
+            players[playerIndex].firebase_id = firebaseId;
+            savePlayers();
+        }
+        
+        // Adiciona ao banco de jogadores salvos
+        savePlayerToSavedDatabase(name, level, gender, isSetter, firebaseId);
+        
+        // Mostra mensagem de sucesso
+        showAlert(`Jogador ${name} salvo no Firebase!`, 'success');
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar diretamente no Firebase:', error);
+        console.log('💾 Salvando apenas localmente...');
+        
+        // Fallback: salva apenas localmente
+        savePlayerToSavedDatabase(name, level, gender, isSetter);
+        showAlert(`Jogador ${name} salvo localmente (Firebase indisponível)`, 'warning');
+    }
+}
+
+// Função para carregar jogadores diretamente do Firebase
+async function loadPlayersDirectlyFromFirebase() {
+    if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseGet === 'undefined') {
+        console.log('❌ Firebase não está disponível para carregamento direto');
+        return false;
+    }
+
+    try {
+        console.log('📥 Carregando jogadores diretamente do Firebase...');
+        
+        const playersRef = window.firebaseRef(window.firebaseDatabase, 'players');
+        const snapshot = await window.firebaseGet(playersRef);
+        
+        if (snapshot.exists()) {
+            const firebaseData = snapshot.val();
+            let loadedCount = 0;
+            
+            Object.entries(firebaseData).forEach(([firebaseId, player]) => {
+                // Verifica se o jogador já existe localmente
+                const existsLocally = players.some(localPlayer => 
+                    localPlayer.firebase_id === firebaseId ||
+                    (localPlayer.name === player.name && localPlayer.gender === player.gender)
+                );
+                
+                if (!existsLocally) {
+                    const newPlayer = {
+                        id: firebaseId,
+                        name: player.name,
+                        level: player.level,
+                        gender: player.gender,
+                        isSetter: player.isSetter || false,
+                        createdAt: player.createdAt || new Date().toISOString(),
+                        firebase_id: firebaseId
+                    };
+                    players.push(newPlayer);
+                    loadedCount++;
+                }
+                
+                // Adiciona ao banco de jogadores salvos se não existir
+                const existsInSaved = savedPlayers.some(savedPlayer => 
+                    savedPlayer.firebase_id === firebaseId ||
+                    (savedPlayer.name === player.name && savedPlayer.gender === player.gender)
+                );
+                
+                if (!existsInSaved) {
+                    const savedPlayer = {
+                        id: firebaseId,
+                        name: player.name,
+                        level: player.level,
+                        gender: player.gender,
+                        isSetter: player.isSetter || false,
+                        firebase_id: firebaseId,
+                        createdAt: player.createdAt || new Date().toISOString(),
+                        lastUsed: player.updatedAt || player.createdAt || new Date().toISOString()
+                    };
+                    savedPlayers.push(savedPlayer);
+                }
+            });
+            
+            // Salva as alterações
+            savePlayers();
+            saveSavedPlayers();
+            
+            console.log(`✅ ${loadedCount} novos jogadores carregados diretamente do Firebase`);
+            console.log(`💾 Total de jogadores no banco: ${savedPlayers.length}`);
+            
+            return true;
+        } else {
+            console.log('📭 Nenhum jogador encontrado no Firebase');
+            return true;
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar diretamente do Firebase:', error);
+        return false;
     }
 }
 
 async function reloadPlayersFromFirebase() {
     console.log('🔄 Recarregando jogadores do Firebase...');
     
+    // Primeiro tenta via API
+    const wasConnected = apiConnected;
+    apiConnected = await PlayersAPI.checkAPIHealth();
+    
     if (apiConnected) {
+        console.log('✅ API disponível, carregando via API...');
         await loadPlayersFromAPI();
         updatePlayerList();
         updateSavedPlayersList();
-        showAlert('Jogadores recarregados do Firebase!', 'success');
+        showAlert('Jogadores recarregados do Firebase via API!', 'success');
     } else {
-        apiConnected = await PlayersAPI.checkAPIHealth();
-        if (apiConnected) {
-            console.log('✅ Reconectado com a API Backend');
-            await loadPlayersFromAPI();
+        console.log('⚠️ API não disponível, tentando Firebase direto...');
+        
+        // Tenta carregar diretamente do Firebase
+        const firebaseSuccess = await loadPlayersDirectlyFromFirebase();
+        
+        if (firebaseSuccess) {
             updatePlayerList();
             updateSavedPlayersList();
-            showAlert('Reconectado! Jogadores recarregados do Firebase!', 'success');
+            showAlert('Jogadores carregados diretamente do Firebase!', 'info');
         } else {
-            syncWithFirebase();
-            setTimeout(() => {
-                updateSavedPlayersList();
-                showAlert('Sincronização com Firebase concluída!', 'info');
-            }, 1000);
+            console.log('❌ Falha ao carregar do Firebase, usando dados locais');
+            showAlert('Não foi possível conectar ao Firebase. Usando dados locais.', 'warning');
         }
+    }
+    
+    // Se reconectou à API, informa o usuário
+    if (!wasConnected && apiConnected) {
+        console.log('🔗 Reconectado à API Backend!');
     }
 }
 
@@ -923,11 +1089,6 @@ function calculateSuggestedTeams() {
 
 // Funções de exemplo para testes
 async function createSamplePlayers() {
-    if (!apiConnected) {
-        console.log('❌ API não está conectada. Não é possível criar jogadores de exemplo.');
-        return;
-    }
-    
     const samplePlayers = [
         { name: "João Silva", level: "bom", gender: "masculino", isSetter: false },
         { name: "Maria Santos", level: "ótimo", gender: "feminino", isSetter: true },
@@ -936,20 +1097,71 @@ async function createSamplePlayers() {
         { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true }
     ];
     
-    console.log('🔧 Criando jogadores de exemplo no Firebase...');
+    console.log('🔧 Criando jogadores de exemplo...');
     
-    for (const player of samplePlayers) {
-        const result = await PlayersAPI.createPlayer(player);
-        if (result.success) {
-            console.log(`✅ Jogador ${player.name} criado com sucesso`);
-        } else {
-            console.log(`❌ Erro ao criar jogador ${player.name}:`, result.error);
+    if (apiConnected) {
+        console.log('📡 Usando API para criar jogadores...');
+        
+        for (const player of samplePlayers) {
+            const result = await PlayersAPI.createPlayer(player);
+            if (result.success) {
+                console.log(`✅ Jogador ${player.name} criado via API`);
+            } else {
+                console.log(`❌ Erro ao criar jogador ${player.name} via API:`, result.error);
+            }
+        }
+    } else {
+        console.log('🔥 API não disponível, usando Firebase direto...');
+        
+        for (const player of samplePlayers) {
+            await savePlayerDirectlyToFirebase(player.name, player.level, player.gender, player.isSetter, `temp_${Date.now()}`);
         }
     }
     
+    // Aguarda um pouco e recarrega
     setTimeout(() => {
         reloadPlayersFromFirebase();
-    }, 1000);
+    }, 2000);
+}
+
+// Função para testar se o Firebase está funcionando
+function testFirebaseConnection() {
+    console.log('🧪 Testando conexão com Firebase...');
+    
+    if (typeof window.firebaseDatabase === 'undefined') {
+        console.log('❌ Firebase Database não disponível');
+        return false;
+    }
+    
+    if (typeof window.firebaseRef === 'undefined') {
+        console.log('❌ Firebase Ref não disponível');
+        return false;
+    }
+    
+    if (typeof window.firebaseSet === 'undefined') {
+        console.log('❌ Firebase Set não disponível');
+        return false;
+    }
+    
+    if (typeof window.firebaseGet === 'undefined') {
+        console.log('❌ Firebase Get não disponível');
+        return false;
+    }
+    
+    console.log('✅ Todas as funções do Firebase estão disponíveis');
+    
+    // Teste básico de escrita
+    const testRef = window.firebaseRef(window.firebaseDatabase, 'test/connection');
+    window.firebaseSet(testRef, {
+        timestamp: new Date().toISOString(),
+        message: 'Teste de conexão'
+    }).then(() => {
+        console.log('✅ Teste de escrita no Firebase bem-sucedido');
+    }).catch((error) => {
+        console.log('❌ Erro no teste de escrita:', error);
+    });
+    
+    return true;
 }
 
 // Inicializa a aplicação

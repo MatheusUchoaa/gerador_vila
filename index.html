@@ -163,7 +163,7 @@
         // Import Firebase modules from CDN
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
-        import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, push, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
         // Firebase configuration
         const firebaseConfig = {
@@ -188,7 +188,11 @@
         window.firebaseDatabase = database;
         window.firebaseRef = ref;
         window.firebasePush = push;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
         window.firebaseOnValue = onValue;
+        
+        console.log('🔥 Firebase inicializado e funções disponibilizadas globalmente');
     </script>
     
     <script src="script.js"></script>
