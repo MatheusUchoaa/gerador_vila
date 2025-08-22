@@ -13,6 +13,25 @@ const firebaseConfig = {
 // Configuração da API Backend
 const API_BASE_URL = 'http://localhost:5000';
 
+// Sistema de logging profissional
+const Logger = {
+    success: (message, data = null) => {
+        console.log(`[SUCCESS] ${message}`, data || '');
+    },
+    error: (message, error = null) => {
+        console.error(`[ERROR] ${message}`, error || '');
+    },
+    warning: (message, data = null) => {
+        console.warn(`[WARNING] ${message}`, data || '');
+    },
+    info: (message, data = null) => {
+        console.log(`[INFO] ${message}`, data || '');
+    },
+    debug: (message, data = null) => {
+        console.log(`[DEBUG] ${message}`, data || '');
+    }
+};
+
 // Dados dos jogadores
 let players = JSON.parse(localStorage.getItem('players')) || [];
 let savedPlayers = JSON.parse(localStorage.getItem('savedPlayers')) || [];
@@ -45,7 +64,7 @@ class PlayersAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao buscar jogadores da API:', error);
+      Logger.error(Erro ao buscar jogadores da API:', error);
       return { success: false, error: 'Erro de conexão com a API' };
     }
   }
@@ -62,7 +81,7 @@ class PlayersAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao criar jogador na API:', error);
+      Logger.error(Erro ao criar jogador na API:', error);
       return { success: false, error: 'Erro de conexão com a API' };
     }
   }
@@ -79,7 +98,7 @@ class PlayersAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao atualizar jogador na API:', error);
+      Logger.error(Erro ao atualizar jogador na API:', error);
       return { success: false, error: 'Erro de conexão com a API' };
     }
   }
@@ -92,7 +111,7 @@ class PlayersAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Erro ao remover jogador na API:', error);
+      Logger.error(Erro ao remover jogador na API:', error);
       return { success: false, error: 'Erro de conexão com a API' };
     }
   }
@@ -102,7 +121,7 @@ class PlayersAPI {
       const response = await fetch(`${API_BASE_URL}/health`);
       return response.ok;
     } catch (error) {
-      console.error('API Backend não está disponível:', error);
+      Logger.error(API Backend não está disponível:', error);
       return false;
     }
   }
@@ -112,10 +131,10 @@ class PlayersAPI {
 async function init() {
     apiConnected = await PlayersAPI.checkAPIHealth();
     if (apiConnected) {
-        console.log('✅ API Backend conectada');
+        Logger.success('API Backend conectada');
         await loadPlayersFromAPI();
     } else {
-        console.log('⚠️ API Backend não disponível, usando dados locais');
+        Logger.warning('API Backend não disponível, usando dados locais');
     }
     
     updatePlayerList();
@@ -134,11 +153,13 @@ async function init() {
     window.reloadPlayersFromFirebase = reloadPlayersFromFirebase;
     window.createSamplePlayers = createSamplePlayers;
     window.testFirebaseConnection = testFirebaseConnection;
+    window.create22PlayersDemo = create22PlayersDemo;
     
-    console.log('🔧 Funções disponíveis:');
-    console.log('  - reloadPlayersFromFirebase(): Recarrega jogadores do Firebase');
-    console.log('  - createSamplePlayers(): Cria jogadores de exemplo no Firebase');
-    console.log('  - testFirebaseConnection(): Testa conexão com Firebase');
+    Logger.success(🔧 Funções disponíveis:');
+    Logger.success(  - reloadPlayersFromFirebase(): Recarrega jogadores do Firebase');
+    Logger.success(  - createSamplePlayers(): Cria jogadores de exemplo no Firebase');
+    Logger.success(  - testFirebaseConnection(): Testa conexão com Firebase');
+    Logger.success(  - create22PlayersDemo(): Cria 22 jogadores para demonstração');
 }
 
 // Funções auxiliares
@@ -180,7 +201,7 @@ async function handleAddPlayer(e) {
     // Verifica se estamos editando um jogador salvo do Firebase
     if (playerId && playerId.startsWith('saved_')) {
         const savedPlayerId = playerId.replace('saved_', '');
-        console.log(`🔄 Detectada edição de jogador salvo: ${savedPlayerId}`);
+        Logger.info(`Detectada edição de jogador salvo: ${savedPlayerId}`);
         await updateSavedPlayerInFirebase(savedPlayerId, name, level, gender, isSetter);
     } else if (playerId) {
         // Edição de jogador normal (da lista atual)
@@ -221,7 +242,7 @@ async function addPlayer(name, level, gender, isSetter = false) {
     
     // Tenta sincronizar com Firebase via API
     if (apiConnected) {
-        console.log('🔄 Sincronizando com Firebase via API...');
+        Logger.info('Sincronizando com Firebase via API...');
         const playerData = { name, level, gender, isSetter };
         const apiPlayer = await syncPlayerWithAPI(playerData);
         
@@ -231,18 +252,18 @@ async function addPlayer(name, level, gender, isSetter = false) {
             if (playerIndex !== -1) {
                 players[playerIndex].firebase_id = apiPlayer.firebase_id;
                 savePlayers();
-                console.log(`✅ Jogador ${name} sincronizado com Firebase (ID: ${apiPlayer.firebase_id})`);
+                Logger.success(`Jogador ${name} sincronizado com Firebase (ID: ${apiPlayer.firebase_id})`);
             }
             
             // Adiciona ao banco de jogadores salvos
             savePlayerToSavedDatabase(name, level, gender, isSetter, apiPlayer.firebase_id);
         } else {
-            console.log(`⚠️ Falha na sincronização via API para ${name}, tentando Firebase direto`);
+            Logger.warning(`Falha na sincronização via API para ${name}, tentando Firebase direto`);
             // Fallback: tenta salvar diretamente no Firebase
             await savePlayerDirectlyToFirebase(name, level, gender, isSetter, newPlayer.id);
         }
     } else {
-        console.log('⚠️ API não disponível, tentando Firebase direto...');
+        Logger.warning('API não disponível, tentando Firebase direto...');
         // Se API não estiver disponível, tenta Firebase direto
         await savePlayerDirectlyToFirebase(name, level, gender, isSetter, newPlayer.id);
     }
@@ -271,13 +292,13 @@ async function updatePlayer(id, name, level, gender, isSetter) {
         const result = await PlayersAPI.updatePlayer(oldPlayer.firebase_id, playerData);
         
         if (result.success) {
-            console.log('✅ Jogador atualizado na API:', name);
+            Logger.success('Jogador atualizado na API:', name);
         } else {
-            console.error('❌ Erro ao atualizar jogador na API:', result.error);
+            Logger.error('Erro ao atualizar jogador na API:', result.error);
         }
     } else if (oldPlayer.firebase_id) {
         // Fallback: apenas atualiza no banco local se não há API disponível
-        console.log('⚠️ API não disponível, mantendo dados locais apenas');
+        Logger.warning('API não disponível, mantendo dados locais apenas');
     }
     
     const savedPlayerIndex = savedPlayers.findIndex(p => p.id === id || p.firebase_id === oldPlayer.firebase_id);
@@ -342,7 +363,7 @@ async function loadPlayersFromAPI() {
             console.log(`📥 ${apiPlayers.length} jogadores carregados da API`);
         }
     } catch (error) {
-        console.error('Erro ao carregar jogadores da API:', error);
+        Logger.error(Erro ao carregar jogadores da API:', error);
     }
 }
 
@@ -352,14 +373,14 @@ async function syncPlayerWithAPI(playerData) {
     try {
         const result = await PlayersAPI.createPlayer(playerData);
         if (result.success) {
-            console.log('✅ Jogador sincronizado com API:', result.player.name);
+            Logger.success(✅ Jogador sincronizado com API:', result.player.name);
             return result.player;
         } else {
-            console.error('❌ Erro ao sincronizar jogador:', result.error);
+            Logger.error(❌ Erro ao sincronizar jogador:', result.error);
             return null;
         }
     } catch (error) {
-        console.error('❌ Erro ao sincronizar jogador:', error);
+        Logger.error(❌ Erro ao sincronizar jogador:', error);
         return null;
     }
 }
@@ -368,14 +389,14 @@ async function syncPlayerWithAPI(playerData) {
 async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, localId) {
     // Verifica se o Firebase está disponível
     if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseSet === 'undefined') {
-        console.log('❌ Firebase não está disponível para salvamento direto');
+        Logger.success(❌ Firebase não está disponível para salvamento direto');
         // Adiciona ao banco local mesmo assim
         savePlayerToSavedDatabase(name, level, gender, isSetter);
         return;
     }
 
     try {
-        console.log('🔄 Tentando salvar diretamente no Firebase...');
+        Logger.success(🔄 Tentando salvar diretamente no Firebase...');
         
         const playerData = {
             name,
@@ -408,8 +429,8 @@ async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, local
         showAlert(`Jogador ${name} salvo no Firebase!`, 'success');
         
     } catch (error) {
-        console.error('❌ Erro ao salvar diretamente no Firebase:', error);
-        console.log('💾 Salvando apenas localmente...');
+        Logger.error(❌ Erro ao salvar diretamente no Firebase:', error);
+        Logger.success(💾 Salvando apenas localmente...');
         
         // Fallback: salva apenas localmente
         savePlayerToSavedDatabase(name, level, gender, isSetter);
@@ -420,12 +441,12 @@ async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, local
 // Função para carregar jogadores diretamente do Firebase
 async function loadPlayersDirectlyFromFirebase() {
     if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseGet === 'undefined') {
-        console.log('❌ Firebase não está disponível para carregamento direto');
+        Logger.success(❌ Firebase não está disponível para carregamento direto');
         return false;
     }
 
     try {
-        console.log('📥 Carregando jogadores diretamente do Firebase...');
+        Logger.success(📥 Carregando jogadores diretamente do Firebase...');
         
         const playersRef = window.firebaseRef(window.firebaseDatabase, 'players');
         const snapshot = await window.firebaseGet(playersRef);
@@ -480,36 +501,36 @@ async function loadPlayersDirectlyFromFirebase() {
             savePlayers();
             saveSavedPlayers();
             
-        console.log(`✅ ${loadedCount} novos jogadores carregados diretamente do Firebase`);
+            console.log(`✅ ${loadedCount} novos jogadores carregados diretamente do Firebase`);
             console.log(`💾 Total de jogadores no banco: ${savedPlayers.length}`);
             
             return true;
         } else {
-            console.log('📭 Nenhum jogador encontrado no Firebase');
+            Logger.success(📭 Nenhum jogador encontrado no Firebase');
             return true;
         }
         
     } catch (error) {
-        console.error('❌ Erro ao carregar diretamente do Firebase:', error);
+        Logger.error(❌ Erro ao carregar diretamente do Firebase:', error);
         return false;
     }
 }
 
 async function reloadPlayersFromFirebase() {
-    console.log('🔄 Recarregando jogadores do Firebase...');
+    Logger.success(🔄 Recarregando jogadores do Firebase...');
     
     // Primeiro tenta via API
     const wasConnected = apiConnected;
     apiConnected = await PlayersAPI.checkAPIHealth();
     
     if (apiConnected) {
-        console.log('✅ API disponível, carregando via API...');
+        Logger.success(✅ API disponível, carregando via API...');
         await loadPlayersFromAPI();
         updatePlayerList();
         updateSavedPlayersList();
         showAlert('Jogadores recarregados do Firebase via API!', 'success');
     } else {
-        console.log('⚠️ API não disponível, tentando Firebase direto...');
+        Logger.success(⚠️ API não disponível, tentando Firebase direto...');
         
         // Tenta carregar diretamente do Firebase
         const firebaseSuccess = await loadPlayersDirectlyFromFirebase();
@@ -519,20 +540,20 @@ async function reloadPlayersFromFirebase() {
             updateSavedPlayersList();
             showAlert('Jogadores carregados diretamente do Firebase!', 'info');
         } else {
-            console.log('❌ Falha ao carregar do Firebase, usando dados locais');
+            Logger.success(❌ Falha ao carregar do Firebase, usando dados locais');
             showAlert('Não foi possível conectar ao Firebase. Usando dados locais.', 'warning');
         }
     }
     
     // Se reconectou à API, informa o usuário
     if (!wasConnected && apiConnected) {
-        console.log('🔗 Reconectado à API Backend!');
+        Logger.success(🔗 Reconectado à API Backend!');
     }
 }
 
 function syncWithFirebase() {
     if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseOnValue === 'undefined') {
-        console.log('Firebase não está disponível para sincronização');
+        Logger.success(Firebase não está disponível para sincronização');
         return;
     }
 
@@ -542,7 +563,7 @@ function syncWithFirebase() {
         window.firebaseOnValue(playersRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                console.log('Jogadores sincronizados do Firebase:');
+                Logger.success(Jogadores sincronizados do Firebase:');
                 
                 Object.entries(data).forEach(([firebaseId, player]) => {
                     console.log(`- ${player.name}: ${player.level}, ${player.gender}, Levantador: ${player.isSetter}`);
@@ -574,7 +595,7 @@ function syncWithFirebase() {
             }
         });
     } catch (error) {
-        console.error('Erro ao sincronizar com Firebase:', error);
+        Logger.error(Erro ao sincronizar com Firebase:', error);
     }
 }
 
@@ -763,7 +784,7 @@ async function editSavedPlayer(playerId) {
     // Busca o jogador no banco de jogadores salvos
     const savedPlayer = savedPlayers.find(p => p.id === playerId);
     if (!savedPlayer) {
-        console.error('❌ Jogador não encontrado no banco de salvos');
+        Logger.error(❌ Jogador não encontrado no banco de salvos');
         showAlert('Jogador não encontrado!', 'error');
         return;
     }
@@ -801,11 +822,11 @@ async function editSavedPlayer(playerId) {
             }
         }
         
-        console.log('✅ Formulário preenchido para edição');
+        Logger.success(✅ Formulário preenchido para edição');
         showAlert(`Editando: ${savedPlayer.name}. Faça as alterações e clique em "Atualizar no Firebase".`, 'info');
         
     } catch (error) {
-        console.error('❌ Erro ao iniciar edição:', error);
+        Logger.error(❌ Erro ao iniciar edição:', error);
         showAlert('Erro ao carregar dados para edição!', 'error');
     }
 }
@@ -845,7 +866,7 @@ async function fillFormForEdit(player) {
             setterCheckbox.checked = Boolean(player.isSetter);
         }
         
-        console.log('📋 Formulário preenchido com dados:', {
+        Logger.success(📋 Formulário preenchido com dados:', {
             name: player.name,
             level: player.level,
             gender: player.gender,
@@ -853,7 +874,7 @@ async function fillFormForEdit(player) {
         });
         
     } catch (error) {
-        console.error('❌ Erro ao preencher formulário:', error);
+        Logger.error(❌ Erro ao preencher formulário:', error);
         throw error;
     }
 }
@@ -898,11 +919,11 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
         
         // Tenta atualizar via API primeiro
         if (apiConnected) {
-            console.log('🌐 Tentando atualizar via API...');
+            Logger.success(🌐 Tentando atualizar via API...');
             updateResult = await PlayersAPI.updatePlayer(firebaseId, updatedData);
             
             if (updateResult.success) {
-                console.log('✅ Jogador atualizado via API com sucesso');
+                Logger.success(✅ Jogador atualizado via API com sucesso');
             } else {
                 console.warn('⚠️ Falha na API, tentando Firebase direto...');
             }
@@ -910,7 +931,7 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
         
         // Fallback: atualização direta no Firebase se API falhar
         if (!updateResult.success) {
-            console.log('🔥 Tentando atualização direta no Firebase...');
+            Logger.success(🔥 Tentando atualização direta no Firebase...');
             updateResult = await updatePlayerDirectlyInFirebase(firebaseId, updatedData);
         }
         
@@ -947,7 +968,7 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
             saveSavedPlayers();
             updateSavedPlayersList();
             
-            console.log('✅ Jogador atualizado com sucesso em todos os bancos');
+            Logger.success(✅ Jogador atualizado com sucesso em todos os bancos');
             showAlert(`${updatedData.name} atualizado com sucesso no Firebase!`, 'success');
             
             // Limpa o formulário e remove modo de edição
@@ -958,7 +979,7 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
         }
         
     } catch (error) {
-        console.error('❌ Erro ao atualizar jogador no Firebase:', error);
+        Logger.error(❌ Erro ao atualizar jogador no Firebase:', error);
         showAlert(`Erro ao atualizar jogador: ${error.message}`, 'error');
         
         // Não limpa o formulário em caso de erro para o usuário tentar novamente
@@ -976,23 +997,21 @@ async function updatePlayerDirectlyInFirebase(firebaseId, playerData) {
     try {
         console.log(`🔥 Atualizando diretamente no Firebase: ${firebaseId}`);
         
-        // Verifica se o Firebase está disponível
-        if (!window.firebaseDatabase || !window.firebaseRef || !window.firebaseUpdate) {
-            throw new Error('Firebase não está disponível');
-        }
+        // Importa as funções necessárias do Firebase
+        const { getDatabase, ref, update } = window.firebaseModules;
+        const database = getDatabase();
         
-        // Usa as funções globais do Firebase
-        const database = window.firebaseDatabase;
-        const playerRef = window.firebaseRef(database, `players/${firebaseId}`);
+        // Referência para o jogador específico
+        const playerRef = ref(database, `players/${firebaseId}`);
         
         // Atualiza os dados
-        await window.firebaseUpdate(playerRef, playerData);
+        await update(playerRef, playerData);
         
-        console.log('✅ Atualização direta no Firebase bem-sucedida');
+        Logger.success(✅ Atualização direta no Firebase bem-sucedida');
         return { success: true };
         
     } catch (error) {
-        console.error('❌ Erro na atualização direta do Firebase:', error);
+        Logger.error(❌ Erro na atualização direta do Firebase:', error);
         return { 
             success: false, 
             error: error.message || 'Erro ao conectar com Firebase'
@@ -1019,7 +1038,7 @@ function resetFormAfterFirebaseEdit() {
     // Reseta o formulário
     resetForm();
     
-    console.log('🔄 Formulário resetado após edição do Firebase');
+    Logger.success(🔄 Formulário resetado após edição do Firebase');
 }
 
 function addPlayerFromSaved(playerId) {
@@ -1087,7 +1106,7 @@ async function removeSavedPlayer(playerId) {
         // Busca o jogador no banco de jogadores salvos
         const playerIndex = savedPlayers.findIndex(p => p.id === playerId);
         if (playerIndex === -1) {
-            console.error('❌ Jogador não encontrado no banco de salvos');
+            Logger.error(❌ Jogador não encontrado no banco de salvos');
             showAlert('Jogador não encontrado!', 'error');
             return;
         }
@@ -1104,7 +1123,7 @@ async function removeSavedPlayer(playerId) {
             : `Tem certeza que deseja remover "${playerName}" do banco local?`;
             
         if (!confirm(confirmMessage)) {
-            console.log('❌ Exclusão cancelada pelo usuário');
+            Logger.success(❌ Exclusão cancelada pelo usuário');
             return;
         }
         
@@ -1121,11 +1140,11 @@ async function removeSavedPlayer(playerId) {
                 );
                 
                 if (!fallbackConfirm) {
-                    console.log('❌ Exclusão cancelada após erro no Firebase');
+                    Logger.success(❌ Exclusão cancelada após erro no Firebase');
                     return;
                 }
                 
-                console.log('⚠️ Prosseguindo com exclusão apenas local');
+                Logger.success(⚠️ Prosseguindo com exclusão apenas local');
             }
         }
         
@@ -1155,7 +1174,7 @@ async function removeSavedPlayer(playerId) {
         showAlert(message, 'success');
         
     } catch (error) {
-        console.error('❌ Erro ao remover jogador:', error);
+        Logger.error(❌ Erro ao remover jogador:', error);
         showAlert(`Erro ao remover jogador: ${error.message}`, 'error');
     }
 }
@@ -1174,11 +1193,11 @@ async function deleteSavedPlayerFromFirebase(firebaseId, playerName) {
         
         // Tenta excluir via API primeiro
         if (apiConnected) {
-            console.log('🌐 Tentando excluir via API...');
+            Logger.success(🌐 Tentando excluir via API...');
             deleteResult = await PlayersAPI.deletePlayer(firebaseId);
             
             if (deleteResult.success) {
-                console.log('✅ Jogador excluído via API com sucesso');
+                Logger.success(✅ Jogador excluído via API com sucesso');
                 return { success: true };
             } else {
                 console.warn('⚠️ Falha na API, tentando Firebase direto...');
@@ -1187,7 +1206,7 @@ async function deleteSavedPlayerFromFirebase(firebaseId, playerName) {
         
         // Fallback: exclusão direta no Firebase se API falhar
         if (!deleteResult.success) {
-            console.log('🔥 Tentando exclusão direta no Firebase...');
+            Logger.success(🔥 Tentando exclusão direta no Firebase...');
             deleteResult = await deletePlayerDirectlyFromFirebase(firebaseId);
         }
         
@@ -1199,7 +1218,7 @@ async function deleteSavedPlayerFromFirebase(firebaseId, playerName) {
         }
         
     } catch (error) {
-        console.error('❌ Erro ao excluir jogador do Firebase:', error);
+        Logger.error(❌ Erro ao excluir jogador do Firebase:', error);
         return { 
             success: false, 
             error: error.message || 'Erro ao conectar com Firebase'
@@ -1216,23 +1235,21 @@ async function deletePlayerDirectlyFromFirebase(firebaseId) {
     try {
         console.log(`🔥 Excluindo diretamente do Firebase: ${firebaseId}`);
         
-        // Verifica se o Firebase está disponível
-        if (!window.firebaseDatabase || !window.firebaseRef || !window.firebaseRemove) {
-            throw new Error('Firebase não está disponível');
-        }
+        // Importa as funções necessárias do Firebase
+        const { getDatabase, ref, remove } = window.firebaseModules;
+        const database = getDatabase();
         
-        // Usa as funções globais do Firebase
-        const database = window.firebaseDatabase;
-        const playerRef = window.firebaseRef(database, `players/${firebaseId}`);
+        // Referência para o jogador específico
+        const playerRef = ref(database, `players/${firebaseId}`);
         
         // Remove o documento
-        await window.firebaseRemove(playerRef);
+        await remove(playerRef);
         
-        console.log('✅ Exclusão direta do Firebase bem-sucedida');
+        Logger.success(✅ Exclusão direta do Firebase bem-sucedida');
         return { success: true };
         
     } catch (error) {
-        console.error('❌ Erro na exclusão direta do Firebase:', error);
+        Logger.error(❌ Erro na exclusão direta do Firebase:', error);
         return { 
             success: false, 
             error: error.message || 'Erro ao conectar com Firebase'
@@ -1250,7 +1267,7 @@ async function removePlayer(playerId) {
     try {
         const playerIndex = players.findIndex(p => p.id === playerId);
         if (playerIndex === -1) {
-            console.error('❌ Jogador não encontrado na lista atual');
+            Logger.error(❌ Jogador não encontrado na lista atual');
             showAlert('Jogador não encontrado!', 'error');
             return;
         }
@@ -1302,7 +1319,7 @@ async function removePlayer(playerId) {
         console.log(`✅ Jogador removido com sucesso`);
         
     } catch (error) {
-        console.error('❌ Erro ao remover jogador:', error);
+        Logger.error(❌ Erro ao remover jogador:', error);
         showAlert(`Erro ao remover jogador: ${error.message}`, 'error');
     }
 }
@@ -1311,15 +1328,6 @@ async function removePlayer(playerId) {
 function handleGenerateTeams() {
     if (players.length < 2) {
         showAlert('Você precisa de pelo menos 2 jogadores para formar times!', 'error');
-        return;
-    }
-
-    // Detecta se é um resorteio
-    const isRegeneration = currentTeams !== null;
-    
-    if (isRegeneration) {
-        console.log('🔄 Detectado resorteio - usando estratégia diferente');
-        handleRegenerateTeams();
         return;
     }
 
@@ -1352,266 +1360,6 @@ function handleGenerateTeams() {
     
     console.log(`🎯 Iniciando geração de ${teamsNumber} times para ${players.length} jogadores`);
     generateTeams(teamsNumber);
-}
-
-/**
- * Função específica para resorteio com estratégias diferentes
- */
-function handleRegenerateTeams() {
-    console.log('🔄 Iniciando resorteio com estratégia diferente...');
-    
-    const numTeams = currentTeams.length;
-    const previousTeamCompositions = currentTeams.map(team => 
-        team.map(player => ({ id: player.id, name: player.name }))
-    );
-    
-    console.log(`📋 Times anteriores salvos para comparação (${numTeams} times)`);
-    
-    // Tenta até 10 vezes gerar uma formação significativamente diferente
-    let attempts = 0;
-    let newTeams = null;
-    let bestAttempt = null;
-    let bestDifference = 0;
-    
-    while (attempts < 10) {
-        attempts++;
-        console.log(`🎲 Tentativa ${attempts} de resorteio...`);
-        
-        // Usa diferentes estratégias de embaralhamento baseado na tentativa
-        const reshuffledPlayers = reshufflePlayers(players, attempts);
-        const testTeams = Array(numTeams).fill().map(() => []);
-        
-        // Usa estratégia alternativa para resorteio
-        distributePlayersForRegeneration(reshuffledPlayers, testTeams, attempts);
-        
-        // Calcula diferença em relação aos times anteriores
-        const difference = calculateTeamDifference(testTeams, previousTeamCompositions);
-        
-        console.log(`📊 Tentativa ${attempts}: ${difference.toFixed(1)}% de diferença`);
-        
-        if (difference > bestDifference) {
-            bestDifference = difference;
-            bestAttempt = testTeams;
-        }
-        
-        // Se conseguiu uma diferença significativa (>50%), usa essa formação
-        if (difference >= 50) {
-            newTeams = testTeams;
-            console.log(`✅ Formação suficientemente diferente encontrada (${difference.toFixed(1)}%)`);
-            break;
-        }
-    }
-    
-    // Se não encontrou uma formação muito diferente, usa a melhor tentativa
-    if (!newTeams) {
-        newTeams = bestAttempt;
-        console.log(`⚠️ Usando melhor tentativa com ${bestDifference.toFixed(1)}% de diferença`);
-    }
-    
-    if (!newTeams) {
-        showAlert('Erro ao gerar novo sorteio. Tente novamente.', 'error');
-        return;
-    }
-    
-    displayTeams(newTeams);
-    currentTeams = newTeams;
-    
-    showTeamStats(newTeams);
-    showAlert(`Times re-sorteados com ${bestDifference.toFixed(1)}% de diferença da formação anterior!`, 'success');
-}
-
-/**
- * Embaralha jogadores usando diferentes estratégias baseado na tentativa
- */
-function reshufflePlayers(playersList, attempt) {
-    const players = [...playersList];
-    
-    switch (attempt % 4) {
-        case 1:
-            // Embaralhamento padrão
-            return players.sort(() => Math.random() - 0.5);
-            
-        case 2:
-            // Embaralhamento invertido por nível
-            return players.sort((a, b) => {
-                const levelOrder = { 'delicioso': 4, 'ótimo': 3, 'bom': 2, 'ok': 1 };
-                return levelOrder[b.level] - levelOrder[a.level] + (Math.random() - 0.5);
-            });
-            
-        case 3:
-            // Embaralhamento por gênero primeiro
-            return players.sort((a, b) => {
-                if (a.gender !== b.gender) {
-                    return a.gender === 'feminino' ? -1 : 1;
-                }
-                return Math.random() - 0.5;
-            });
-            
-        default:
-            // Embaralhamento por posição (levantadores primeiro)
-            return players.sort((a, b) => {
-                if (a.isSetter !== b.isSetter) {
-                    return b.isSetter ? 1 : -1;
-                }
-                return Math.random() - 0.5;
-            });
-    }
-}
-
-/**
- * Distribui jogadores usando estratégia alternativa para resorteio
- */
-function distributePlayersForRegeneration(allPlayers, teams, attempt) {
-    const maxPlayersPerTeam = 6;
-    const totalPlayers = allPlayers.length;
-    const numTeams = teams.length;
-    
-    console.log(`🔄 Estratégia de resorteio ${attempt % 3 + 1} para ${numTeams} times`);
-    
-    if (attempt % 3 === 0) {
-        // Estratégia 1: Distribuição sequencial por nível
-        distributeSequentialByLevel(allPlayers, teams, maxPlayersPerTeam);
-    } else if (attempt % 3 === 1) {
-        // Estratégia 2: Distribuição em serpentina
-        distributeSerpentineStyle(allPlayers, teams, maxPlayersPerTeam);
-    } else {
-        // Estratégia 3: Distribuição balanceada alternativa
-        distributeAlternativeBalanced(allPlayers, teams, maxPlayersPerTeam);
-    }
-}
-
-/**
- * Estratégia 1: Distribuição sequencial por nível
- */
-function distributeSequentialByLevel(allPlayers, teams, maxPlayersPerTeam) {
-    console.log('📋 Usando distribuição sequencial por nível');
-    
-    // Separa por nível e embaralha cada grupo
-    const levels = ['delicioso', 'ótimo', 'bom', 'ok'];
-    let playerIndex = 0;
-    
-    levels.forEach(level => {
-        const playersOfLevel = allPlayers.filter(p => p.level === level);
-        playersOfLevel.forEach(player => {
-            const targetTeam = playerIndex % teams.length;
-            if (teams[targetTeam].length < maxPlayersPerTeam) {
-                teams[targetTeam].push(player);
-                playerIndex++;
-            }
-        });
-    });
-    
-    // Distribui jogadores restantes
-    const remaining = allPlayers.filter(p => !teams.some(team => team.includes(p)));
-    remaining.forEach(player => {
-        const teamWithSpace = teams.find(team => team.length < maxPlayersPerTeam);
-        if (teamWithSpace) {
-            teamWithSpace.push(player);
-        }
-    });
-}
-
-/**
- * Estratégia 2: Distribuição em serpentina
- */
-function distributeSerpentineStyle(allPlayers, teams, maxPlayersPerTeam) {
-    console.log('🐍 Usando distribuição em serpentina');
-    
-    let teamIndex = 0;
-    let direction = 1; // 1 para frente, -1 para trás
-    
-    allPlayers.forEach((player, index) => {
-        // Adiciona ao time atual se houver espaço
-        if (teams[teamIndex].length < maxPlayersPerTeam) {
-            teams[teamIndex].push(player);
-        }
-        
-        // Move para próximo time em padrão serpentina
-        if ((index + 1) % teams.length === 0) {
-            direction *= -1; // Inverte direção
-        }
-        
-        teamIndex += direction;
-        
-        // Ajusta índices para não sair dos limites
-        if (teamIndex >= teams.length) {
-            teamIndex = teams.length - 1;
-            direction = -1;
-        } else if (teamIndex < 0) {
-            teamIndex = 0;
-            direction = 1;
-        }
-    });
-}
-
-/**
- * Estratégia 3: Distribuição balanceada alternativa
- */
-function distributeAlternativeBalanced(allPlayers, teams, maxPlayersPerTeam) {
-    console.log('⚖️ Usando distribuição balanceada alternativa');
-    
-    // Separa jogadores por categorias
-    const setters = allPlayers.filter(p => p.isSetter);
-    const females = allPlayers.filter(p => p.gender === 'feminino' && !p.isSetter);
-    const males = allPlayers.filter(p => p.gender === 'masculino' && !p.isSetter);
-    
-    // Distribui levantadores de forma alternada
-    setters.forEach((setter, index) => {
-        const teamIndex = index % teams.length;
-        if (teams[teamIndex].length < maxPlayersPerTeam) {
-            teams[teamIndex].push(setter);
-        }
-    });
-    
-    // Distribui femininas priorizando times com menos jogadoras
-    females.forEach(player => {
-        const teamWithFewestFemales = teams
-            .filter(team => team.length < maxPlayersPerTeam)
-            .sort((a, b) => {
-                const femalesA = a.filter(p => p.gender === 'feminino').length;
-                const femalesB = b.filter(p => p.gender === 'feminino').length;
-                return femalesA - femalesB;
-            })[0];
-        
-        if (teamWithFewestFemales) {
-            teamWithFewestFemales.push(player);
-        }
-    });
-    
-    // Distribui masculinos priorizando equilíbrio
-    males.forEach(player => {
-        const teamWithSpace = teams
-            .filter(team => team.length < maxPlayersPerTeam)
-            .sort((a, b) => a.length - b.length)[0];
-        
-        if (teamWithSpace) {
-            teamWithSpace.push(player);
-        }
-    });
-}
-
-/**
- * Calcula percentual de diferença entre duas formações de times
- */
-function calculateTeamDifference(newTeams, previousTeamCompositions) {
-    let totalPlayers = 0;
-    let differentPlacements = 0;
-    
-    newTeams.forEach((newTeam, teamIndex) => {
-        newTeam.forEach(player => {
-            totalPlayers++;
-            
-            // Verifica se o jogador estava no mesmo time antes
-            const wasInSameTeam = previousTeamCompositions[teamIndex] && 
-                previousTeamCompositions[teamIndex].some(prevPlayer => prevPlayer.id === player.id);
-            
-            if (!wasInSameTeam) {
-                differentPlacements++;
-            }
-        });
-    });
-    
-    return totalPlayers > 0 ? (differentPlacements / totalPlayers) * 100 : 0;
 }
 
 // Calcula o número ideal de times baseado na nova estratégia
@@ -1681,8 +1429,8 @@ function generateTeams(numTeams) {
     
     elements.teamOutput.innerHTML = '';
     
-    // Nova estratégia: distribui jogadores sequencialmente, preenchendo um time por vez
-    distributePlayersSequentially(shuffledPlayers, teams);
+    // Nova estratégia: distribui jogadores de forma organizada e equilibrada
+    distributePlayersOrganized(shuffledPlayers, teams);
     
     displayTeams(teams);
     currentTeams = teams;
@@ -1691,135 +1439,10 @@ function generateTeams(numTeams) {
     
     // Mostra estatísticas dos times
     showTeamStats(teams);
-    showAlert(`${teams.length} times gerados com distribuição sequencial!`, 'success');
+    showAlert(`${teams.length} times gerados com distribuição equilibrada!`, 'success');
 }
 
-// Nova função para distribuir jogadores sequencialmente
-function distributePlayersSequentially(allPlayers, teams) {
-    const maxPlayersPerTeam = 6;
-    const totalPlayers = allPlayers.length;
-    const numTeams = teams.length;
-    
-    console.log(`📊 Distribuindo ${totalPlayers} jogadores sequencialmente em ${numTeams} times`);
-    console.log(`🎯 Estratégia: Levantadores distribuídos igualitariamente, depois preenchimento sequencial`);
-    
-    // Separa jogadores por categorias
-    const setters = allPlayers.filter(p => p.isSetter);
-    const nonSetters = allPlayers.filter(p => !p.isSetter);
-    
-    // Embaralha cada categoria
-    const shuffledSetters = [...setters].sort(() => Math.random() - 0.5);
-    const shuffledNonSetters = [...nonSetters].sort(() => Math.random() - 0.5);
-    
-    console.log(`🏐 Encontrados ${shuffledSetters.length} levantadores para ${numTeams} times`);
-    
-    // FASE 1: Distribui levantadores igualitariamente primeiro
-    distributeSettersEqually(shuffledSetters, teams);
-    
-    // FASE 2: Preenche sequencialmente com os demais jogadores
-    fillTeamsSequentially(shuffledNonSetters, teams, maxPlayersPerTeam);
-    
-    // Log final da distribuição
-    logFinalDistribution(teams);
-    
-    console.log('✅ Distribuição sequencial com levantadores igualitários concluída');
-}
-
-// FASE 1: Distribui levantadores de forma igualitária entre todos os times
-function distributeSettersEqually(setters, teams) {
-    console.log(`\n🏐 FASE 1: Distribuindo ${setters.length} levantadores igualitariamente`);
-    
-    // Distribui levantadores em ordem circular (round-robin)
-    for (let i = 0; i < setters.length; i++) {
-        const teamIndex = i % teams.length; // Distribui ciclicamente
-        const setter = setters[i];
-        
-        teams[teamIndex].push(setter);
-        
-        console.log(`📍 Levantador ${setter.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador)`);
-    }
-    
-    // Mostra estatísticas dos levantadores por time
-    console.log(`\n📊 Levantadores por time:`);
-    teams.forEach((team, index) => {
-        const settersInTeam = team.filter(p => p.isSetter).length;
-        console.log(`  Time ${index + 1}: ${settersInTeam} levantador(es)`);
-    });
-}
-
-// FASE 2: Preenche os times sequencialmente com os demais jogadores
-function fillTeamsSequentially(nonSetters, teams, maxPlayersPerTeam) {
-    console.log(`\n👥 FASE 2: Preenchendo sequencialmente com ${nonSetters.length} jogadores restantes`);
-    
-    let currentTeamIndex = 0;
-    
-    for (let i = 0; i < nonSetters.length; i++) {
-        const player = nonSetters[i];
-        
-        // Procura o próximo time que ainda tem espaço
-        while (currentTeamIndex < teams.length && teams[currentTeamIndex].length >= maxPlayersPerTeam) {
-            currentTeamIndex++;
-        }
-        
-        // Se todos os times principais estão cheios, distribui nas sobras
-        if (currentTeamIndex >= teams.length) {
-            console.log(`⚠️ Todos os times principais estão cheios. Distribuindo sobras...`);
-            distributeRemainingPlayersInOrder(nonSetters.slice(i), teams);
-            break;
-        }
-        
-        // Adiciona o jogador ao time atual
-        teams[currentTeamIndex].push(player);
-        
-        const teamNumber = currentTeamIndex + 1;
-        const positionInTeam = teams[currentTeamIndex].length;
-        
-        console.log(`📍 ${player.name} → Time ${teamNumber} (${positionInTeam}° jogador)`);
-        
-        // Se o time atual ficou cheio, passa para o próximo na próxima iteração
-        if (teams[currentTeamIndex].length >= maxPlayersPerTeam) {
-            console.log(`✅ Time ${teamNumber} completo com ${teams[currentTeamIndex].length} jogadores`);
-        }
-    }
-}
-
-// Função para mostrar distribuição final
-function logFinalDistribution(teams) {
-    console.log('\n📋 DISTRIBUIÇÃO FINAL:');
-    teams.forEach((team, index) => {
-        const settersCount = team.filter(p => p.isSetter).length;
-        const femaleCount = team.filter(p => p.gender === 'feminino').length;
-        const maleCount = team.filter(p => p.gender === 'masculino').length;
-        
-        console.log(`  Time ${index + 1}: ${team.length} jogadores (${settersCount} levantadores, ${femaleCount}F, ${maleCount}M)`);
-        
-        // Lista os levantadores do time
-        const teamSetters = team.filter(p => p.isSetter);
-        if (teamSetters.length > 0) {
-            console.log(`    Levantadores: ${teamSetters.map(p => p.name).join(', ')}`);
-        }
-    });
-}
-
-// Distribui jogadores restantes quando todos os times principais estão cheios
-function distributeRemainingPlayersInOrder(remainingPlayers, teams) {
-    console.log(`📝 Distribuindo ${remainingPlayers.length} jogadores restantes...`);
-    
-    // Distribui um por um nos times que têm menos jogadores
-    for (const player of remainingPlayers) {
-        // Encontra o time com menos jogadores
-        const teamSizes = teams.map(team => team.length);
-        const minSize = Math.min(...teamSizes);
-        const teamIndex = teamSizes.findIndex(size => size === minSize);
-        
-        teams[teamIndex].push(player);
-        
-        const setterIndicator = player.isSetter ? ' (Levantador)' : '';
-        console.log(`📍 ${player.name}${setterIndicator} → Time ${teamIndex + 1} (sobra)`);
-    }
-}
-
-// Nova função para distribuir jogadores de forma organizada (mantida como alternativa)
+// Nova função para distribuir jogadores de forma organizada
 function distributePlayersOrganized(allPlayers, teams) {
     const maxPlayersPerTeam = 6;
     const totalPlayers = allPlayers.length;
@@ -1845,7 +1468,7 @@ function distributePlayersOrganized(allPlayers, teams) {
     // Fase 5: Ajustes finais para balanceamento
     finalBalanceAdjustments(teams);
     
-    console.log('✅ Distribuição organizada concluída');
+    Logger.success(✅ Distribuição organizada concluída');
 }
 
 // Categoriza jogadores para distribuição equilibrada
@@ -1995,7 +1618,7 @@ function distributeRemainingPlayers(remainingPlayers, teams, maxPerTeam) {
 
 // Ajustes finais para balanceamento
 function finalBalanceAdjustments(teams) {
-    console.log('⚖️ Aplicando ajustes finais de balanceamento');
+    Logger.success(⚖️ Aplicando ajustes finais de balanceamento');
     
     // Verifica se algum time está muito desbalanceado
     teams.forEach((team, index) => {
@@ -2010,8 +1633,8 @@ function finalBalanceAdjustments(teams) {
 
 // Mostra estatísticas dos times gerados
 function showTeamStats(teams) {
-    console.log('\n📈 ESTATÍSTICAS DOS TIMES GERADOS:');
-    console.log('=' .repeat(50));
+    Logger.success(\n📈 ESTATÍSTICAS DOS TIMES GERADOS:');
+    Logger.success(=' .repeat(50));
     
     teams.forEach((team, index) => {
         const teamScore = calculateTeamScore(team);
@@ -2159,65 +1782,22 @@ function removeFromAvailable(player, availablePlayers) {
 }
 
 function displayTeams(teams) {
-    elements.teamOutput.innerHTML = '<h3 class="text-center mb-4">⚽ Times Sorteados</h3>';
+    elements.teamOutput.innerHTML = '<h3 class="text-center mb-4">Times Gerados com Distribuição Organizada</h3>';
     
     if (teams.length === 0) {
         elements.teamOutput.innerHTML = '<p class="text-center">Nenhum time foi gerado.</p>';
         return;
     }
     
-    // Adiciona cada time de forma simplificada
+    // Adiciona resumo geral
+    const summaryElement = createTeamsSummary(teams);
+    elements.teamOutput.appendChild(summaryElement);
+    
+    // Adiciona cada time
     teams.forEach((team, index) => {
-        const teamElement = createSimpleTeamElement(team, index);
+        const teamElement = createTeamElementEnhanced(team, index);
         elements.teamOutput.appendChild(teamElement);
     });
-    
-    // Adiciona estatísticas gerais no final (opcional e compacta)
-    const summaryElement = createCompactSummary(teams);
-    elements.teamOutput.appendChild(summaryElement);
-}
-
-// Cria elemento de time simplificado - apenas nomes
-function createSimpleTeamElement(team, index) {
-    const teamDiv = document.createElement('div');
-    teamDiv.className = 'team mb-3';
-    
-    teamDiv.innerHTML = `
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">🏐 Time ${index + 1} (${team.length} jogadores)</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    ${team.map((player, playerIndex) => `
-                        <div class="col-md-6 col-lg-4 mb-2">
-                            <div class="player-simple d-flex align-items-center">
-                                <span class="player-number me-2">${playerIndex + 1}.</span>
-                                <span class="player-name">${player.name}</span>
-                                ${player.isSetter ? '<span class="setter-indicator ms-2" title="Levantador">🏐</span>' : ''}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    return teamDiv;
-}
-
-// Cria resumo compacto (opcional)
-function createCompactSummary(teams) {
-    const totalPlayers = teams.reduce((sum, team) => sum + team.length, 0);
-    const totalSetters = teams.reduce((sum, team) => sum + team.filter(p => p.isSetter).length, 0);
-    
-    const summaryDiv = document.createElement('div');
-    summaryDiv.className = 'alert alert-success mt-4 text-center';
-    summaryDiv.innerHTML = `
-        <strong>📊 Resumo:</strong> ${teams.length} times | ${totalPlayers} jogadores | ${totalSetters} levantadores
-    `;
-    
-    return summaryDiv;
 }
 
 // Cria resumo geral dos times
@@ -2394,10 +1974,10 @@ async function createSamplePlayers() {
         { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true }
     ];
     
-    console.log('🔧 Criando jogadores de exemplo...');
+    Logger.success(🔧 Criando jogadores de exemplo...');
     
     if (apiConnected) {
-        console.log('📡 Usando API para criar jogadores...');
+        Logger.success(📡 Usando API para criar jogadores...');
         
         for (const player of samplePlayers) {
             const result = await PlayersAPI.createPlayer(player);
@@ -2408,7 +1988,7 @@ async function createSamplePlayers() {
             }
         }
     } else {
-        console.log('🔥 API não disponível, usando Firebase direto...');
+        Logger.success(🔥 API não disponível, usando Firebase direto...');
         
         for (const player of samplePlayers) {
             await savePlayerDirectlyToFirebase(player.name, player.level, player.gender, player.isSetter, `temp_${Date.now()}`);
@@ -2423,29 +2003,29 @@ async function createSamplePlayers() {
 
 // Função para testar se o Firebase está funcionando
 function testFirebaseConnection() {
-    console.log('🧪 Testando conexão com Firebase...');
+    Logger.success(🧪 Testando conexão com Firebase...');
     
     if (typeof window.firebaseDatabase === 'undefined') {
-        console.log('❌ Firebase Database não disponível');
+        Logger.success(❌ Firebase Database não disponível');
         return false;
     }
     
     if (typeof window.firebaseRef === 'undefined') {
-        console.log('❌ Firebase Ref não disponível');
+        Logger.success(❌ Firebase Ref não disponível');
         return false;
     }
     
     if (typeof window.firebaseSet === 'undefined') {
-        console.log('❌ Firebase Set não disponível');
+        Logger.success(❌ Firebase Set não disponível');
         return false;
     }
     
     if (typeof window.firebaseGet === 'undefined') {
-        console.log('❌ Firebase Get não disponível');
+        Logger.success(❌ Firebase Get não disponível');
         return false;
     }
     
-    console.log('✅ Todas as funções do Firebase estão disponíveis');
+    Logger.success(✅ Todas as funções do Firebase estão disponíveis');
     
     // Teste básico de escrita
     const testRef = window.firebaseRef(window.firebaseDatabase, 'test/connection');
@@ -2453,12 +2033,81 @@ function testFirebaseConnection() {
         timestamp: new Date().toISOString(),
         message: 'Teste de conexão'
     }).then(() => {
-        console.log('✅ Teste de escrita no Firebase bem-sucedido');
+        Logger.success(✅ Teste de escrita no Firebase bem-sucedido');
     }).catch((error) => {
-        console.log('❌ Erro no teste de escrita:', error);
+        Logger.success(❌ Erro no teste de escrita:', error);
     });
     
     return true;
+}
+
+// Função para criar 22 jogadores para demonstração
+function create22PlayersDemo() {
+    Logger.success(🎭 Criando 22 jogadores para demonstração da nova funcionalidade...');
+    
+    // Limpa a lista atual
+    players = [];
+    savePlayers();
+    updatePlayerList();
+    
+    const demoPlayers = [
+        // Levantadores (4)
+        { name: "Ana Levantadora", level: "ótimo", gender: "feminino", isSetter: true },
+        { name: "Carlos Levantador", level: "delicioso", gender: "masculino", isSetter: true },
+        { name: "Maria Setter", level: "bom", gender: "feminino", isSetter: true },
+        { name: "João Levanta", level: "ótimo", gender: "masculino", isSetter: true },
+        
+        // Jogadoras femininas (9)
+        { name: "Beatriz Silva", level: "delicioso", gender: "feminino", isSetter: false },
+        { name: "Carolina Santos", level: "ótimo", gender: "feminino", isSetter: false },
+        { name: "Daniela Costa", level: "ótimo", gender: "feminino", isSetter: false },
+        { name: "Eduarda Lima", level: "bom", gender: "feminino", isSetter: false },
+        { name: "Fernanda Rocha", level: "bom", gender: "feminino", isSetter: false },
+        { name: "Gabriela Alves", level: "bom", gender: "feminino", isSetter: false },
+        { name: "Helena Mendes", level: "ok", gender: "feminino", isSetter: false },
+        { name: "Isabela Ferreira", level: "ok", gender: "feminino", isSetter: false },
+        { name: "Juliana Oliveira", level: "ok", gender: "feminino", isSetter: false },
+        
+        // Jogadores masculinos (9)
+        { name: "Bruno Atacante", level: "delicioso", gender: "masculino", isSetter: false },
+        { name: "Diego Cortador", level: "delicioso", gender: "masculino", isSetter: false },
+        { name: "Eduardo Blocker", level: "ótimo", gender: "masculino", isSetter: false },
+        { name: "Felipe Spiker", level: "ótimo", gender: "masculino", isSetter: false },
+        { name: "Gabriel Defensor", level: "ótimo", gender: "masculino", isSetter: false },
+        { name: "Henrique Forte", level: "bom", gender: "masculino", isSetter: false },
+        { name: "Igor Saltador", level: "bom", gender: "masculino", isSetter: false },
+        { name: "Kevin Rápido", level: "bom", gender: "masculino", isSetter: false },
+        { name: "Lucas Energia", level: "ok", gender: "masculino", isSetter: false }
+    ];
+    
+    console.log(`📝 Adicionando ${demoPlayers.length} jogadores à lista...`);
+    
+    demoPlayers.forEach((playerData, index) => {
+        const player = {
+            id: `demo_${Date.now()}_${index}`,
+            name: playerData.name,
+            level: playerData.level,
+            gender: playerData.gender,
+            isSetter: playerData.isSetter,
+            createdAt: new Date().toISOString()
+        };
+        
+        players.push(player);
+        console.log(`  ✅ ${player.name} (${player.level}, ${player.gender}${player.isSetter ? ', Levantador' : ''})`);
+    });
+    
+    savePlayers();
+    updatePlayerList();
+    
+    console.log(`\n🎯 DEMONSTRAÇÃO PRONTA!`);
+    console.log(`📊 Total: ${players.length} jogadores`);
+    console.log(`🏐 Levantadores: ${players.filter(p => p.isSetter).length}`);
+    console.log(`👩 Feminino: ${players.filter(p => p.gender === 'feminino').length}`);
+    console.log(`👨 Masculino: ${players.filter(p => p.gender === 'masculino').length}`);
+    console.log(`\n💡 Agora clique em "Gerar Times" para ver a nova distribuição organizada!`);
+    console.log(`   Recomendado: 4 times (6-6-6-4 jogadores) ou 3 times (7-7-8 jogadores)`);
+    
+    showAlert('22 jogadores criados para demonstração! Clique em "Gerar Times" para testar.', 'success');
 }
 
 // Inicializa a aplicação
