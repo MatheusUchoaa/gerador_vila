@@ -167,16 +167,44 @@ main section {
 }
 .saved-player {
     background-color: var(--primary-light);
-    padding: 6px 12px;
+    padding: 8px 12px;
     border-radius: 20px;
     font-size: 0.9rem;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: space-between;
+    gap: 8px;
     border: 1px solid var(--primary-dark);
     cursor: pointer;
+    min-width: 200px;
 }
+
+.saved-player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.saved-player-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.saved-player-details {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.level-stars {
+    font-size: 0.8rem;
+    color: #ffa500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
 .saved-player:hover {
     background-color: var(--primary);
     transform: translateY(-2px);

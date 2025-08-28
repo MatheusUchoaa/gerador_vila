@@ -615,6 +615,7 @@ function createPlayerElement(player) {
     li.innerHTML = `
         <div class="player-info" data-id="${player.id}">
             <span class="player-name">${player.name}</span>
+            <span class="level-stars ms-2">${getLevelStars(player.level)}</span>
             <span class="badge role-badge ${player.gender}">
                 ${player.gender.charAt(0).toUpperCase()}
             </span>
@@ -696,6 +697,17 @@ function savePlayerToSavedDatabase(name, level, gender, isSetter = false, fireba
     updateSavedPlayersList();
 }
 
+// Função para converter nível em estrelas
+function getLevelStars(level) {
+    const levelMapping = {
+        'ok': '⭐',
+        'bom': '⭐⭐',
+        'ótimo': '⭐⭐⭐',
+        'delicioso': '⭐⭐⭐⭐'
+    };
+    return levelMapping[level] || '⭐';
+}
+
 function updateSavedPlayersList() {
     elements.savedList.innerHTML = '';
     
@@ -713,16 +725,20 @@ function updateSavedPlayersList() {
         playerElement.className = 'saved-player';
         playerElement.dataset.id = player.id;
         
-        const firebaseIndicator = player.firebase_id ? 
-            '<span class="firebase-indicator" title="Jogador sincronizado com Firebase">🔥</span>' : '';
+        // Converte nível para estrelas
+        const levelStars = getLevelStars(player.level);
         
         playerElement.innerHTML = `
-            ${player.name}
-            <span class="badge role-badge ${player.gender}">
-                ${player.gender.charAt(0).toUpperCase()}
-            </span>
-            ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
-            ${firebaseIndicator}
+            <div class="saved-player-info">
+                <span class="saved-player-name">${player.name}</span>
+                <div class="saved-player-details">
+                    <span class="level-stars" title="Nível: ${player.level}">${levelStars}</span>
+                    <span class="badge role-badge ${player.gender}">
+                        ${player.gender.charAt(0).toUpperCase()}
+                    </span>
+                    ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
+                </div>
+            </div>
             <div class="saved-player-actions">
                 <button class="edit-saved-btn" data-id="${player.id}" title="Editar jogador">
                     <i class="bi bi-pencil"></i>
@@ -1324,14 +1340,8 @@ function handleGenerateTeams() {
     }
 
     const suggestedTeams = calculateSuggestedTeamsOptimal();
-    const teamSuggestions = getTeamSuggestions();
     
-    let message = `Quantos times deseja formar?\n\n`;
-    message += `📊 SUGESTÕES BASEADAS EM ${players.length} JOGADORES:\n`;
-    message += teamSuggestions.map(suggestion => 
-        `${suggestion.teams} times: ${suggestion.description}`
-    ).join('\n');
-    message += `\n\n💡 Recomendado: ${suggestedTeams} times`;
+    let message = `Quantos times deseja formar?`;
     
     const numTeams = prompt(message, suggestedTeams);
     
@@ -1376,46 +1386,34 @@ function handleRegenerateTeams() {
     while (attempts < 10) {
         attempts++;
         console.log(`🎲 Tentativa ${attempts} de resorteio...`);
-        
-        // Usa diferentes estratégias de embaralhamento baseado na tentativa
+        // Embaralha os jogadores, mas mantém todos os adicionados
         const reshuffledPlayers = reshufflePlayers(players, attempts);
         const testTeams = Array(numTeams).fill().map(() => []);
-        
-        // Usa estratégia alternativa para resorteio
-        distributePlayersForRegeneration(reshuffledPlayers, testTeams, attempts);
-        
+        // Usa a mesma lógica principal de distribuição sequencial
+        distributePlayersSequentially(reshuffledPlayers, testTeams);
         // Calcula diferença em relação aos times anteriores
         const difference = calculateTeamDifference(testTeams, previousTeamCompositions);
-        
         console.log(`📊 Tentativa ${attempts}: ${difference.toFixed(1)}% de diferença`);
-        
         if (difference > bestDifference) {
             bestDifference = difference;
             bestAttempt = testTeams;
         }
-        
-        // Se conseguiu uma diferença significativa (>50%), usa essa formação
         if (difference >= 50) {
             newTeams = testTeams;
             console.log(`✅ Formação suficientemente diferente encontrada (${difference.toFixed(1)}%)`);
             break;
         }
     }
-    
-    // Se não encontrou uma formação muito diferente, usa a melhor tentativa
     if (!newTeams) {
         newTeams = bestAttempt;
         console.log(`⚠️ Usando melhor tentativa com ${bestDifference.toFixed(1)}% de diferença`);
     }
-    
     if (!newTeams) {
         showAlert('Erro ao gerar novo sorteio. Tente novamente.', 'error');
         return;
     }
-    
     displayTeams(newTeams);
     currentTeams = newTeams;
-    
     showTeamStats(newTeams);
     showAlert(`Times re-sorteados com ${bestDifference.toFixed(1)}% de diferença da formação anterior!`, 'success');
 }
@@ -1701,28 +1699,35 @@ function distributePlayersSequentially(allPlayers, teams) {
     const numTeams = teams.length;
     
     console.log(`📊 Distribuindo ${totalPlayers} jogadores sequencialmente em ${numTeams} times`);
-    console.log(`🎯 Estratégia: Levantadores distribuídos igualitariamente, depois preenchimento sequencial`);
+    console.log(`🎯 Estratégia: Levantadores e mulheres distribuídos igualitariamente, depois preenchimento sequencial`);
     
     // Separa jogadores por categorias
     const setters = allPlayers.filter(p => p.isSetter);
-    const nonSetters = allPlayers.filter(p => !p.isSetter);
+    const females = allPlayers.filter(p => p.gender === 'feminino' && !p.isSetter);
+    const maleNonSetters = allPlayers.filter(p => p.gender === 'masculino' && !p.isSetter);
     
     // Embaralha cada categoria
     const shuffledSetters = [...setters].sort(() => Math.random() - 0.5);
-    const shuffledNonSetters = [...nonSetters].sort(() => Math.random() - 0.5);
+    const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
+    const shuffledMaleNonSetters = [...maleNonSetters].sort(() => Math.random() - 0.5);
     
     console.log(`🏐 Encontrados ${shuffledSetters.length} levantadores para ${numTeams} times`);
+    console.log(`👩 Encontradas ${shuffledFemales.length} mulheres (não levantadoras) para ${numTeams} times`);
+    console.log(`👨 Encontrados ${shuffledMaleNonSetters.length} homens (não levantadores) para ${numTeams} times`);
     
     // FASE 1: Distribui levantadores igualitariamente primeiro
     distributeSettersEqually(shuffledSetters, teams);
     
-    // FASE 2: Preenche sequencialmente com os demais jogadores
-    fillTeamsSequentially(shuffledNonSetters, teams, maxPlayersPerTeam);
+    // FASE 2: Distribui mulheres igualitariamente
+    distributeFemalesEqually(shuffledFemales, teams, maxPlayersPerTeam);
+    
+    // FASE 3: Preenche sequencialmente com os homens restantes
+    fillTeamsSequentiallyWithMales(shuffledMaleNonSetters, teams, maxPlayersPerTeam);
     
     // Log final da distribuição
     logFinalDistribution(teams);
     
-    console.log('✅ Distribuição sequencial com levantadores igualitários concluída');
+    console.log('✅ Distribuição sequencial com levantadores e mulheres igualitários concluída');
 }
 
 // FASE 1: Distribui levantadores de forma igualitária entre todos os times
@@ -1747,14 +1752,53 @@ function distributeSettersEqually(setters, teams) {
     });
 }
 
-// FASE 2: Preenche os times sequencialmente com os demais jogadores
-function fillTeamsSequentially(nonSetters, teams, maxPlayersPerTeam) {
-    console.log(`\n👥 FASE 2: Preenchendo sequencialmente com ${nonSetters.length} jogadores restantes`);
+// FASE 2: Distribui mulheres (não levantadoras) de forma igualitária entre todos os times
+function distributeFemalesEqually(females, teams, maxPlayersPerTeam) {
+    console.log(`\n👩 FASE 2: Distribuindo ${females.length} mulheres igualitariamente`);
+    
+    // Distribui mulheres em ordem circular (round-robin)
+    for (let i = 0; i < females.length; i++) {
+        const teamIndex = i % teams.length; // Distribui ciclicamente
+        const female = females[i];
+        
+        // Verifica se o time ainda tem espaço
+        if (teams[teamIndex].length < maxPlayersPerTeam) {
+            teams[teamIndex].push(female);
+            console.log(`📍 ${female.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador)`);
+        } else {
+            // Se o time está cheio, procura outro time com espaço
+            let placed = false;
+            for (let j = 0; j < teams.length; j++) {
+                const alternativeTeamIndex = (teamIndex + j) % teams.length;
+                if (teams[alternativeTeamIndex].length < maxPlayersPerTeam) {
+                    teams[alternativeTeamIndex].push(female);
+                    console.log(`📍 ${female.name} → Time ${alternativeTeamIndex + 1} (${teams[alternativeTeamIndex].length}° jogador) [realocada]`);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                console.log(`⚠️ ${female.name} não pôde ser alocada - todos os times estão cheios`);
+            }
+        }
+    }
+    
+    // Mostra estatísticas das mulheres por time
+    console.log(`\n📊 Mulheres por time:`);
+    teams.forEach((team, index) => {
+        const femalesInTeam = team.filter(p => p.gender === 'feminino').length;
+        console.log(`  Time ${index + 1}: ${femalesInTeam} mulher(es)`);
+    });
+}
+
+// FASE 3: Preenche os times sequencialmente com os homens restantes
+function fillTeamsSequentiallyWithMales(maleNonSetters, teams, maxPlayersPerTeam) {
+    console.log(`\n� FASE 3: Preenchendo sequencialmente com ${maleNonSetters.length} homens restantes`);
     
     let currentTeamIndex = 0;
     
-    for (let i = 0; i < nonSetters.length; i++) {
-        const player = nonSetters[i];
+    for (let i = 0; i < maleNonSetters.length; i++) {
+        const player = maleNonSetters[i];
         
         // Procura o próximo time que ainda tem espaço
         while (currentTeamIndex < teams.length && teams[currentTeamIndex].length >= maxPlayersPerTeam) {
@@ -1764,7 +1808,7 @@ function fillTeamsSequentially(nonSetters, teams, maxPlayersPerTeam) {
         // Se todos os times principais estão cheios, distribui nas sobras
         if (currentTeamIndex >= teams.length) {
             console.log(`⚠️ Todos os times principais estão cheios. Distribuindo sobras...`);
-            distributeRemainingPlayersInOrder(nonSetters.slice(i), teams);
+            distributeRemainingPlayersInOrder(maleNonSetters.slice(i), teams);
             break;
         }
         
@@ -1798,7 +1842,23 @@ function logFinalDistribution(teams) {
         if (teamSetters.length > 0) {
             console.log(`    Levantadores: ${teamSetters.map(p => p.name).join(', ')}`);
         }
+        
+        // Lista as mulheres do time
+        const teamFemales = team.filter(p => p.gender === 'feminino');
+        if (teamFemales.length > 0) {
+            console.log(`    Mulheres: ${teamFemales.map(p => p.name).join(', ')}`);
+        }
     });
+    
+    // Estatísticas gerais de distribuição
+    const totalFemales = teams.reduce((sum, team) => sum + team.filter(p => p.gender === 'feminino').length, 0);
+    const totalSetters = teams.reduce((sum, team) => sum + team.filter(p => p.isSetter).length, 0);
+    
+    console.log(`\n📊 RESUMO DA DISTRIBUIÇÃO:`);
+    console.log(`  Total de mulheres: ${totalFemales} (distribuídas entre ${teams.length} times)`);
+    console.log(`  Total de levantadores: ${totalSetters} (distribuídos entre ${teams.length} times)`);
+    console.log(`  Média de mulheres por time: ${(totalFemales / teams.length).toFixed(1)}`);
+    console.log(`  Média de levantadores por time: ${(totalSetters / teams.length).toFixed(1)}`);
 }
 
 // Distribui jogadores restantes quando todos os times principais estão cheios
@@ -2159,7 +2219,7 @@ function removeFromAvailable(player, availablePlayers) {
 }
 
 function displayTeams(teams) {
-    elements.teamOutput.innerHTML = '<h3 class="text-center mb-4">⚽ Times Sorteados</h3>';
+    elements.teamOutput.innerHTML = '<h3 class="text-center mb-4"> Times Sorteados</h3>';
     
     if (teams.length === 0) {
         elements.teamOutput.innerHTML = '<p class="text-center">Nenhum time foi gerado.</p>';
