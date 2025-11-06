@@ -397,12 +397,15 @@ main section {
 
 .player-name {
     display: block !important;
-    font-weight: 600;
-    font-size: 15px;
-    color: var(--dark) !important;
-    margin-bottom: 4px;
-    min-height: 20px;
-    line-height: 1.3;
+    font-weight: 600 !important;
+    font-size: 15px !important;
+    color: #1E293B !important;
+    margin-bottom: 4px !important;
+    min-height: 20px !important;
+    line-height: 1.3 !important;
+    text-align: left !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .player-attributes {
@@ -1043,3 +1046,39 @@ footer {
 .bi-chevron-right::before { content: "▶️"; }
 .bi-chevron-down::before { content: "🔽"; }
 .bi-arrow-clockwise::before { content: "↻"; }
+
+/* Force visibility para jogadores na lista */
+#player-list .list-group-item {
+    background: white !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 70px !important;
+}
+
+#player-list .player-card-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 16px !important;
+    visibility: visible !important;
+}
+
+#player-list .player-name {
+    font-size: 16px !important;
+    font-weight: bold !important;
+    color: #000000 !important;
+    text-decoration: none !important;
+}
+
+#player-list .player-avatar {
+    background: #6B7280 !important;
+    color: white !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    font-weight: bold !important;
+}

@@ -621,16 +621,22 @@ function updatePlayerList() {
     }
     
     const uniquePlayers = [...new Map(players.map(p => [p.id, p]))].map(([_, p]) => p);
+    console.log('📋 Jogadores únicos para renderizar:', uniquePlayers.length);
     elements.countElement.innerHTML = `<i class="bi bi-people-fill me-1"></i>${uniquePlayers.length}`;
     
     const sortedPlayers = [...players].sort((a, b) => 
         a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
     );
     
-    sortedPlayers.forEach(player => {
+    console.log('📝 Renderizando jogadores na lista...');
+    sortedPlayers.forEach((player, index) => {
+        console.log(`🎯 Jogador ${index + 1}:`, player.name, player);
         const playerElement = createPlayerElement(player);
+        console.log('📦 Elemento criado:', playerElement);
         elements.list.appendChild(playerElement);
     });
+    
+    console.log('✅ Lista de jogadores atualizada');
 }
 
 function createPlayerElement(player) {
@@ -644,26 +650,29 @@ function createPlayerElement(player) {
     const playerGender = player.gender || 'masculino';
     const playerLevel = player.level || 'ok';
     
+    // HTML simplificado para garantir visibilidade
     li.innerHTML = `
-        <div class="player-card-wrapper" data-id="${player.id}">
-            <div class="player-main-info">
-                <div class="player-avatar ${playerGender}">
+        <div class="player-card-wrapper" data-id="${player.id}" style="display: flex !important; align-items: center !important; padding: 16px !important; width: 100% !important;">
+            <div class="player-main-info" style="display: flex !important; align-items: center !important; gap: 12px !important; flex: 1 !important;">
+                <div class="player-avatar ${playerGender}" style="width: 40px !important; height: 40px !important; background: #6B7280 !important; color: white !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-weight: bold !important;">
                     ${playerGender === 'masculino' ? 'M' : 'F'}
                 </div>
-                <div class="player-details">
-                    <span class="player-name">${playerName}</span>
-                    <div class="player-attributes">
-                        <span class="level-stars">${getLevelStars(playerLevel)}</span>
-                        ${player.isSetter ? '<span class="position-badge setter">L</span>' : ''}
-                        ${player.isAttacker ? '<span class="position-badge attacker">A</span>' : ''}
+                <div class="player-details" style="flex: 1 !important;">
+                    <div class="player-name" style="font-size: 16px !important; font-weight: bold !important; color: #000000 !important; margin-bottom: 4px !important;">${playerName}</div>
+                    <div class="player-attributes" style="display: flex !important; align-items: center !important; gap: 6px !important;">
+                        <span class="level-stars" style="font-size: 14px !important;">${getLevelStars(playerLevel)}</span>
+                        ${player.isSetter ? '<span class="position-badge setter" style="background: #4B5563 !important; color: white !important; padding: 2px 6px !important; border-radius: 4px !important; font-size: 12px !important;">L</span>' : ''}
+                        ${player.isAttacker ? '<span class="position-badge attacker" style="background: #374151 !important; color: white !important; padding: 2px 6px !important; border-radius: 4px !important; font-size: 12px !important;">A</span>' : ''}
                     </div>
                 </div>
             </div>
-            <button class="delete-btn" data-id="${player.id}" title="Remover jogador">
-                <i class="bi bi-x"></i>
+            <button class="delete-btn" data-id="${player.id}" title="Remover jogador" style="background: #EF4444 !important; color: white !important; border: none !important; border-radius: 50% !important; width: 32px !important; height: 32px !important; display: flex !important; align-items: center !important; justify-content: center !important;">
+                ✕
             </button>
         </div>
     `;
+    
+    console.log('✅ HTML do jogador criado:', li.innerHTML.substring(0, 100) + '...');
     
     li.querySelector('.player-card-wrapper').addEventListener('click', (e) => {
         if (!e.target.closest('.delete-btn')) {
