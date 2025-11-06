@@ -1082,3 +1082,23 @@ footer {
     border-radius: 50% !important;
     font-weight: bold !important;
 }
+
+/* Estilos para lista simples */
+#simple-players-card {
+    background: #f8f9fa !important;
+    border: 2px solid #dee2e6 !important;
+}
+
+#simple-players-card .card-header {
+    background: #e9ecef !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+#simple-players-list .card {
+    transition: transform 0.2s ease !important;
+}
+
+#simple-players-list .card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+}

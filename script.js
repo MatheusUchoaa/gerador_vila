@@ -617,6 +617,9 @@ function updatePlayerList() {
         elements.countElement.innerHTML = '<i class="bi bi-people-fill me-1"></i>0';
         elements.regenerateBtn.style.display = 'none';
         elements.generateBtn.style.display = 'block';
+        
+        // Esconde lista simples
+        document.getElementById('simple-players-card').style.display = 'none';
         return;
     }
     
@@ -636,7 +639,72 @@ function updatePlayerList() {
         elements.list.appendChild(playerElement);
     });
     
+    // Atualiza lista simples sempre
+    updateSimplePlayersList();
+    
     console.log('✅ Lista de jogadores atualizada');
+}
+
+// Nova função para lista simples e funcional
+function updateSimplePlayersList() {
+    const simpleCard = document.getElementById('simple-players-card');
+    const simpleList = document.getElementById('simple-players-list');
+    
+    if (players.length === 0) {
+        simpleCard.style.display = 'none';
+        return;
+    }
+    
+    console.log('🎯 Atualizando lista simples com', players.length, 'jogadores');
+    
+    // Mostra o card
+    simpleCard.style.display = 'block';
+    
+    // Limpa a lista
+    simpleList.innerHTML = '';
+    
+    // Adiciona cada jogador de forma simples
+    players.forEach((player, index) => {
+        const playerCard = document.createElement('div');
+        playerCard.className = 'col-md-4 col-sm-6';
+        
+        const genderIcon = player.gender === 'masculino' ? '👨' : '👩';
+        const levelStars = getLevelStars(player.level);
+        const badges = [];
+        
+        if (player.isSetter) badges.push('L');
+        if (player.isAttacker) badges.push('A');
+        
+        playerCard.innerHTML = `
+            <div class="card h-100" style="background: white; border: 1px solid #ddd;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <span style="font-size: 20px; margin-right: 8px;">${genderIcon}</span>
+                        <strong style="color: #333; font-size: 14px;">${player.name}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span style="font-size: 12px;">${levelStars}</span>
+                        <div>
+                            ${badges.map(badge => `<span class="badge bg-secondary me-1" style="font-size: 10px;">${badge}</span>`).join('')}
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-danger mt-2 w-100" onclick="removeSimplePlayer('${player.id}')" style="font-size: 11px;">
+                        ❌ Remover
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        simpleList.appendChild(playerCard);
+    });
+    
+    console.log('✅ Lista simples atualizada com', players.length, 'jogadores');
+}
+
+// Função para remover jogador da lista simples
+function removeSimplePlayer(playerId) {
+    console.log('🗑️ Removendo jogador da lista simples:', playerId);
+    removePlayer(playerId);
 }
 
 function createPlayerElement(player) {
