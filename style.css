@@ -1,3 +1,4 @@
+/* Gerador de Times da Vila - CSS v2.1 - Tema Minimalista Cinza */
 :root {
     --primary: #6B7280;
     --primary-light: #9CA3AF;
@@ -168,7 +169,7 @@ main section {
 }
 
 .saved-player {
-    background: white;
+    background: white !important;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
@@ -760,9 +761,9 @@ footer {
 }
 
 .alert-success {
-    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
-    border: 1px solid var(--success);
-    color: #065F46;
+    background: linear-gradient(135deg, #F3F4F6, #E5E7EB);
+    border: 1px solid var(--primary-dark);
+    color: #1F2937;
 }
 
 /* Animação de entrada para os times */
@@ -1023,3 +1024,17 @@ footer {
         display: none;
     }
 }
+
+/* Fallback para ícones Bootstrap caso não carreguem */
+.bi-pencil::before { content: "✏️"; }
+.bi-x::before { content: "❌"; }
+.bi-hand-index-thumb::before { content: "👍"; }
+.bi-lightning-charge::before { content: "⚡"; }
+.bi-plus-circle::before { content: "➕"; }
+.bi-people-fill::before { content: "👥"; }
+.bi-arrow-repeat::before { content: "🔄"; }
+.bi-trash-fill::before { content: "🗑️"; }
+.bi-search::before { content: "🔍"; }
+.bi-chevron-right::before { content: "▶️"; }
+.bi-chevron-down::before { content: "🔽"; }
+.bi-arrow-clockwise::before { content: "↻"; }
