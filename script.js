@@ -37,7 +37,7 @@ const elements = {
     reloadFirebaseBtn: document.getElementById('reload-firebase-players'),
     searchInput: document.getElementById('player-search'),
     clearSearchBtn: document.getElementById('clear-search'),
-    savedCountElement: document.getElementById('saved-count')
+    // savedCountElement removido - contador do banco de jogadores não é mais usado
 };
 
 // Funções para comunicação com a API Backend
@@ -614,14 +614,14 @@ function updatePlayerList() {
                 Adicione jogadores usando o formulário acima.
             </li>
         `;
-        elements.countElement.textContent = '0';
+        elements.countElement.innerHTML = '<i class="bi bi-people-fill me-1"></i>0';
         elements.regenerateBtn.style.display = 'none';
         elements.generateBtn.style.display = 'block';
         return;
     }
     
     const uniquePlayers = [...new Map(players.map(p => [p.id, p]))].map(([_, p]) => p);
-    elements.countElement.textContent = uniquePlayers.length;
+    elements.countElement.innerHTML = `<i class="bi bi-people-fill me-1"></i>${uniquePlayers.length}`;
     
     const sortedPlayers = [...players].sort((a, b) => 
         a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
@@ -634,19 +634,26 @@ function updatePlayerList() {
 }
 
 function createPlayerElement(player) {
+    console.log('🎯 Criando elemento para jogador:', player.name, player);
+    
     const li = document.createElement('li');
     li.className = `list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''} ${player.isAttacker ? 'attacker' : ''}`;
+    
+    // Validação para evitar campos vazios
+    const playerName = player.name || 'Sem nome';
+    const playerGender = player.gender || 'masculino';
+    const playerLevel = player.level || 'ok';
     
     li.innerHTML = `
         <div class="player-card-wrapper" data-id="${player.id}">
             <div class="player-main-info">
-                <div class="player-avatar ${player.gender}">
-                    ${player.gender === 'masculino' ? 'M' : 'F'}
+                <div class="player-avatar ${playerGender}">
+                    ${playerGender === 'masculino' ? 'M' : 'F'}
                 </div>
                 <div class="player-details">
-                    <span class="player-name">${player.name}</span>
+                    <span class="player-name">${playerName}</span>
                     <div class="player-attributes">
-                        <span class="level-stars">${getLevelStars(player.level)}</span>
+                        <span class="level-stars">${getLevelStars(playerLevel)}</span>
                         ${player.isSetter ? '<span class="position-badge setter">L</span>' : ''}
                         ${player.isAttacker ? '<span class="position-badge attacker">A</span>' : ''}
                     </div>
@@ -750,10 +757,7 @@ function getLevelStars(level) {
 function updateSavedPlayersList() {
     elements.savedList.innerHTML = '';
     
-    // Atualiza contador
-    if (elements.savedCountElement) {
-        elements.savedCountElement.textContent = savedPlayers.length;
-    }
+    // Contador do banco de jogadores foi removido
     
     if (savedPlayers.length === 0) {
         elements.savedList.innerHTML = '<p class="text-muted">Nenhum jogador salvo ainda.</p>';
