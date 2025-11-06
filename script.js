@@ -34,7 +34,10 @@ const elements = {
     submitBtn: document.getElementById('submit-button'),
     cancelEditBtn: document.getElementById('cancel-edit'),
     toggleSavedBtn: document.getElementById('toggle-saved-players'),
-    reloadFirebaseBtn: document.getElementById('reload-firebase-players')
+    reloadFirebaseBtn: document.getElementById('reload-firebase-players'),
+    searchInput: document.getElementById('player-search'),
+    clearSearchBtn: document.getElementById('clear-search'),
+    savedCountElement: document.getElementById('saved-count')
 };
 
 // Funções para comunicação com a API Backend
@@ -122,6 +125,8 @@ async function init() {
     updateSavedPlayersList();
     setupEventListeners();
     initializeTooltips();
+    initializeBankCollapsed();
+    initializeSearch();
     
     setTimeout(() => {
         syncWithFirebase();
@@ -160,6 +165,16 @@ function setupEventListeners() {
     if (elements.reloadFirebaseBtn) {
         elements.reloadFirebaseBtn.addEventListener('click', reloadPlayersFromFirebase);
     }
+    
+    // Event listeners para o buscador
+    if (elements.searchInput) {
+        elements.searchInput.addEventListener('input', handlePlayerSearch);
+        elements.searchInput.addEventListener('keydown', handleSearchKeydown);
+    }
+    
+    if (elements.clearSearchBtn) {
+        elements.clearSearchBtn.addEventListener('click', clearPlayerSearch);
+    }
 }
 
 // Funções de CRUD com sincronização
@@ -170,6 +185,7 @@ async function handleAddPlayer(e) {
     const level = document.querySelector('input[name="player-level"]:checked')?.value;
     const gender = document.querySelector('input[name="player-gender"]:checked')?.value;
     const isSetter = document.getElementById('player-setter').checked;
+    const isAttacker = document.getElementById('player-attacker').checked;
     const playerId = elements.idInput.value;
 
     if (!name || !level || !gender) {
@@ -181,19 +197,19 @@ async function handleAddPlayer(e) {
     if (playerId && playerId.startsWith('saved_')) {
         const savedPlayerId = playerId.replace('saved_', '');
         console.log(`🔄 Detectada edição de jogador salvo: ${savedPlayerId}`);
-        await updateSavedPlayerInFirebase(savedPlayerId, name, level, gender, isSetter);
+        await updateSavedPlayerInFirebase(savedPlayerId, name, level, gender, isSetter, isAttacker);
     } else if (playerId) {
         // Edição de jogador normal (da lista atual)
-        await updatePlayer(playerId, name, level, gender, isSetter);
+        await updatePlayer(playerId, name, level, gender, isSetter, isAttacker);
     } else {
         // Adição de novo jogador
-        await addPlayer(name, level, gender, isSetter);
+        await addPlayer(name, level, gender, isSetter, isAttacker);
     }
     
     resetForm();
 }
 
-async function addPlayer(name, level, gender, isSetter = false) {
+async function addPlayer(name, level, gender, isSetter = false, isAttacker = false) {
     // Primeiro verifica se já existe um jogador com o mesmo nome
     const existingPlayer = players.find(p => 
         p.name.toLowerCase() === name.toLowerCase() && p.gender === gender
@@ -210,6 +226,7 @@ async function addPlayer(name, level, gender, isSetter = false) {
         level,
         gender,
         isSetter,
+        isAttacker,
         createdAt: new Date().toISOString()
     };
     
@@ -222,7 +239,7 @@ async function addPlayer(name, level, gender, isSetter = false) {
     // Tenta sincronizar com Firebase via API
     if (apiConnected) {
         console.log('🔄 Sincronizando com Firebase via API...');
-        const playerData = { name, level, gender, isSetter };
+        const playerData = { name, level, gender, isSetter, isAttacker };
         const apiPlayer = await syncPlayerWithAPI(playerData);
         
         if (apiPlayer && apiPlayer.firebase_id) {
@@ -235,20 +252,20 @@ async function addPlayer(name, level, gender, isSetter = false) {
             }
             
             // Adiciona ao banco de jogadores salvos
-            savePlayerToSavedDatabase(name, level, gender, isSetter, apiPlayer.firebase_id);
+            savePlayerToSavedDatabase(name, level, gender, isSetter, isAttacker, apiPlayer.firebase_id);
         } else {
             console.log(`⚠️ Falha na sincronização via API para ${name}, tentando Firebase direto`);
             // Fallback: tenta salvar diretamente no Firebase
-            await savePlayerDirectlyToFirebase(name, level, gender, isSetter, newPlayer.id);
+            await savePlayerDirectlyToFirebase(name, level, gender, isSetter, isAttacker, newPlayer.id);
         }
     } else {
         console.log('⚠️ API não disponível, tentando Firebase direto...');
         // Se API não estiver disponível, tenta Firebase direto
-        await savePlayerDirectlyToFirebase(name, level, gender, isSetter, newPlayer.id);
+        await savePlayerDirectlyToFirebase(name, level, gender, isSetter, isAttacker, newPlayer.id);
     }
 }
 
-async function updatePlayer(id, name, level, gender, isSetter) {
+async function updatePlayer(id, name, level, gender, isSetter, isAttacker) {
     const playerIndex = players.findIndex(p => p.id === id);
     if (playerIndex === -1) return;
     
@@ -259,7 +276,8 @@ async function updatePlayer(id, name, level, gender, isSetter) {
         name,
         level,
         gender,
-        isSetter
+        isSetter,
+        isAttacker
     };
     
     savePlayers();
@@ -267,7 +285,7 @@ async function updatePlayer(id, name, level, gender, isSetter) {
     showAlert(`Jogador ${name} atualizado com sucesso!`, 'success');
     
     if (apiConnected && oldPlayer.firebase_id) {
-        const playerData = { name, level, gender, isSetter };
+        const playerData = { name, level, gender, isSetter, isAttacker };
         const result = await PlayersAPI.updatePlayer(oldPlayer.firebase_id, playerData);
         
         if (result.success) {
@@ -287,7 +305,8 @@ async function updatePlayer(id, name, level, gender, isSetter) {
             name,
             level,
             gender,
-            isSetter
+            isSetter,
+            isAttacker
         };
         saveSavedPlayers();
         updateSavedPlayersList();
@@ -307,6 +326,7 @@ async function loadPlayersFromAPI() {
                 level: player.level,
                 gender: player.gender,
                 isSetter: player.isSetter,
+                isAttacker: player.isAttacker || false,
                 createdAt: player.createdAt || new Date().toISOString(),
                 firebase_id: player.firebase_id
             }));
@@ -329,6 +349,7 @@ async function loadPlayersFromAPI() {
                         level: apiPlayer.level,
                         gender: apiPlayer.gender,
                         isSetter: apiPlayer.isSetter,
+                        isAttacker: apiPlayer.isAttacker,
                         firebase_id: apiPlayer.firebase_id,
                         createdAt: apiPlayer.createdAt,
                         lastUsed: apiPlayer.createdAt
@@ -365,12 +386,12 @@ async function syncPlayerWithAPI(playerData) {
 }
 
 // Função para salvar diretamente no Firebase quando API não funciona
-async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, localId) {
+async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, isAttacker, localId) {
     // Verifica se o Firebase está disponível
     if (typeof window.firebaseDatabase === 'undefined' || typeof window.firebaseRef === 'undefined' || typeof window.firebaseSet === 'undefined') {
         console.log('❌ Firebase não está disponível para salvamento direto');
         // Adiciona ao banco local mesmo assim
-        savePlayerToSavedDatabase(name, level, gender, isSetter);
+        savePlayerToSavedDatabase(name, level, gender, isSetter, isAttacker);
         return;
     }
 
@@ -382,6 +403,7 @@ async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, local
             level,
             gender,
             isSetter,
+            isAttacker,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -402,7 +424,7 @@ async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, local
         }
         
         // Adiciona ao banco de jogadores salvos
-        savePlayerToSavedDatabase(name, level, gender, isSetter, firebaseId);
+        savePlayerToSavedDatabase(name, level, gender, isSetter, isAttacker, firebaseId);
         
         // Mostra mensagem de sucesso
         showAlert(`Jogador ${name} salvo no Firebase!`, 'success');
@@ -412,7 +434,7 @@ async function savePlayerDirectlyToFirebase(name, level, gender, isSetter, local
         console.log('💾 Salvando apenas localmente...');
         
         // Fallback: salva apenas localmente
-        savePlayerToSavedDatabase(name, level, gender, isSetter);
+        savePlayerToSavedDatabase(name, level, gender, isSetter, isAttacker);
         showAlert(`Jogador ${name} salvo localmente (Firebase indisponível)`, 'warning');
     }
 }
@@ -448,6 +470,7 @@ async function loadPlayersDirectlyFromFirebase() {
                         level: player.level,
                         gender: player.gender,
                         isSetter: player.isSetter || false,
+                        isAttacker: player.isAttacker || false,
                         createdAt: player.createdAt || new Date().toISOString(),
                         firebase_id: firebaseId
                     };
@@ -468,6 +491,7 @@ async function loadPlayersDirectlyFromFirebase() {
                         level: player.level,
                         gender: player.gender,
                         isSetter: player.isSetter || false,
+                        isAttacker: player.isAttacker || false,
                         firebase_id: firebaseId,
                         createdAt: player.createdAt || new Date().toISOString(),
                         lastUsed: player.updatedAt || player.createdAt || new Date().toISOString()
@@ -559,6 +583,7 @@ function syncWithFirebase() {
                             level: player.level,
                             gender: player.gender,
                             isSetter: player.isSetter || false,
+                            isAttacker: player.isAttacker || false,
                             firebase_id: firebaseId,
                             createdAt: player.createdAt || new Date().toISOString(),
                             lastUsed: player.updatedAt || player.createdAt || new Date().toISOString()
@@ -610,7 +635,7 @@ function updatePlayerList() {
 
 function createPlayerElement(player) {
     const li = document.createElement('li');
-    li.className = `list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''}`;
+    li.className = `list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''} ${player.isAttacker ? 'attacker' : ''}`;
     
     li.innerHTML = `
         <div class="player-info" data-id="${player.id}">
@@ -620,6 +645,7 @@ function createPlayerElement(player) {
                 ${player.gender.charAt(0).toUpperCase()}
             </span>
             ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
+            ${player.isAttacker ? '<span class="attacker-badge">A</span>' : ''}
         </div>
         <button class="btn btn-sm btn-outline-danger delete-player" data-id="${player.id}" title="Remover jogador">
             &times;
@@ -644,6 +670,7 @@ function editPlayer(id) {
     document.getElementById(`level-${player.level.replace('ó', 'o')}`).checked = true;
     document.getElementById(`gender-${player.gender === 'masculino' ? 'male' : 'female'}`).checked = true;
     document.getElementById('player-setter').checked = player.isSetter;
+    document.getElementById('player-attacker').checked = player.isAttacker;
     
     elements.submitBtn.innerHTML = '<i class="bi bi-save"></i> Salvar Alterações';
     elements.cancelEditBtn.style.display = 'block';
@@ -669,7 +696,7 @@ function cancelEdit() {
 }
 
 // Funções para jogadores salvos
-function savePlayerToSavedDatabase(name, level, gender, isSetter = false, firebase_id = null) {
+function savePlayerToSavedDatabase(name, level, gender, isSetter = false, isAttacker = false, firebase_id = null) {
     const existingIndex = savedPlayers.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
     
     if (existingIndex === -1) {
@@ -679,6 +706,7 @@ function savePlayerToSavedDatabase(name, level, gender, isSetter = false, fireba
             level,
             gender,
             isSetter,
+            isAttacker,
             firebase_id,
             lastUsed: new Date().toISOString()
         });
@@ -688,6 +716,7 @@ function savePlayerToSavedDatabase(name, level, gender, isSetter = false, fireba
             level,
             gender,
             isSetter,
+            isAttacker,
             firebase_id: firebase_id || savedPlayers[existingIndex].firebase_id,
             lastUsed: new Date().toISOString()
         };
@@ -710,6 +739,11 @@ function getLevelStars(level) {
 
 function updateSavedPlayersList() {
     elements.savedList.innerHTML = '';
+    
+    // Atualiza contador
+    if (elements.savedCountElement) {
+        elements.savedCountElement.textContent = savedPlayers.length;
+    }
     
     if (savedPlayers.length === 0) {
         elements.savedList.innerHTML = '<p class="text-muted">Nenhum jogador salvo ainda.</p>';
@@ -737,6 +771,7 @@ function updateSavedPlayersList() {
                         ${player.gender.charAt(0).toUpperCase()}
                     </span>
                     ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
+                    ${player.isAttacker ? '<span class="attacker-badge">A</span>' : ''}
                 </div>
             </div>
             <div class="saved-player-actions">
@@ -861,11 +896,18 @@ async function fillFormForEdit(player) {
             setterCheckbox.checked = Boolean(player.isSetter);
         }
         
+        // Define se é atacante
+        const attackerCheckbox = document.getElementById('player-attacker');
+        if (attackerCheckbox) {
+            attackerCheckbox.checked = Boolean(player.isAttacker);
+        }
+        
         console.log('📋 Formulário preenchido com dados:', {
             name: player.name,
             level: player.level,
             gender: player.gender,
-            isSetter: player.isSetter
+            isSetter: player.isSetter,
+            isAttacker: player.isAttacker
         });
         
     } catch (error) {
@@ -882,7 +924,7 @@ async function fillFormForEdit(player) {
  * @param {string} gender - Gênero do jogador
  * @param {boolean} isSetter - Se é levantador
  */
-async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSetter) {
+async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSetter, isAttacker) {
     console.log(`🔄 Iniciando atualização do jogador salvo ID: ${playerId}`);
     
     try {
@@ -905,6 +947,7 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
             level,
             gender,
             isSetter,
+            isAttacker,
             lastUpdated: new Date().toISOString()
         };
         
@@ -938,6 +981,7 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
                 level: updatedData.level,
                 gender: updatedData.gender,
                 isSetter: updatedData.isSetter,
+                isAttacker: updatedData.isAttacker,
                 lastUsed: new Date().toISOString()
             };
             
@@ -953,7 +997,8 @@ async function updateSavedPlayerInFirebase(playerId, name, level, gender, isSett
                     name: updatedData.name,
                     level: updatedData.level,
                     gender: updatedData.gender,
-                    isSetter: updatedData.isSetter
+                    isSetter: updatedData.isSetter,
+                    isAttacker: updatedData.isAttacker
                 };
                 savePlayers();
                 updatePlayerList();
@@ -1074,6 +1119,7 @@ function addPlayerFromSaved(playerId) {
         level: player.level,
         gender: player.gender,
         isSetter: player.isSetter,
+        isAttacker: player.isAttacker,
         createdAt: player.createdAt || new Date().toISOString(),
         firebase_id: player.firebase_id
     };
@@ -1085,11 +1131,40 @@ function addPlayerFromSaved(playerId) {
 }
 
 function toggleSavedPlayersList() {
-    const isHidden = elements.savedList.style.display === 'none';
-    elements.savedList.style.display = isHidden ? 'flex' : 'none';
-    elements.toggleSavedBtn.innerHTML = isHidden 
-        ? '<i class="bi bi-chevron-up"></i>' 
-        : '<i class="bi bi-chevron-down"></i>';
+    const isHidden = elements.savedList.style.display === 'none' || !elements.savedList.classList.contains('expanded');
+    
+    if (isHidden) {
+        // Expandir
+        elements.savedList.style.display = 'flex';
+        elements.savedList.classList.add('expanded');
+        elements.toggleSavedBtn.innerHTML = '<i class="bi bi-chevron-down"></i><span class="ms-1">Fechar</span>';
+        elements.toggleSavedBtn.classList.add('expanded');
+        
+        console.log('🔽 Banco de jogadores expandido');
+    } else {
+        // Fechar
+        elements.savedList.classList.remove('expanded');
+        elements.toggleSavedBtn.innerHTML = '<i class="bi bi-chevron-right"></i><span class="ms-1">Expandir</span>';
+        elements.toggleSavedBtn.classList.remove('expanded');
+        
+        // Aguarda a animação antes de esconder completamente
+        setTimeout(() => {
+            if (!elements.savedList.classList.contains('expanded')) {
+                elements.savedList.style.display = 'none';
+            }
+        }, 400);
+        console.log('🔼 Banco de jogadores fechado');
+    }
+}
+
+/**
+ * Configura scroll para o banco de jogadores (simplificado)
+ */
+function setupScrollIndicator() {
+    // Função mantida para compatibilidade, mas agora apenas garante que o scroll está funcionando
+    if (!elements.savedList.classList.contains('expanded')) return;
+    
+    console.log('📜 Scroll configurado para o banco de jogadores');
 }
 
 /**
@@ -1699,35 +1774,41 @@ function distributePlayersSequentially(allPlayers, teams) {
     const numTeams = teams.length;
     
     console.log(`📊 Distribuindo ${totalPlayers} jogadores sequencialmente em ${numTeams} times`);
-    console.log(`🎯 Estratégia: Levantadores e mulheres distribuídos igualitariamente, depois preenchimento sequencial`);
+    console.log(`🎯 Estratégia: Levantadores, atacantes e mulheres distribuídos igualitariamente, depois preenchimento sequencial`);
     
     // Separa jogadores por categorias
     const setters = allPlayers.filter(p => p.isSetter);
-    const females = allPlayers.filter(p => p.gender === 'feminino' && !p.isSetter);
-    const maleNonSetters = allPlayers.filter(p => p.gender === 'masculino' && !p.isSetter);
+    const attackers = allPlayers.filter(p => p.isAttacker && !p.isSetter);
+    const females = allPlayers.filter(p => p.gender === 'feminino' && !p.isSetter && !p.isAttacker);
+    const maleNonSettersNonAttackers = allPlayers.filter(p => p.gender === 'masculino' && !p.isSetter && !p.isAttacker);
     
     // Embaralha cada categoria
     const shuffledSetters = [...setters].sort(() => Math.random() - 0.5);
+    const shuffledAttackers = [...attackers].sort(() => Math.random() - 0.5);
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
-    const shuffledMaleNonSetters = [...maleNonSetters].sort(() => Math.random() - 0.5);
+    const shuffledMaleNonSettersNonAttackers = [...maleNonSettersNonAttackers].sort(() => Math.random() - 0.5);
     
     console.log(`🏐 Encontrados ${shuffledSetters.length} levantadores para ${numTeams} times`);
-    console.log(`👩 Encontradas ${shuffledFemales.length} mulheres (não levantadoras) para ${numTeams} times`);
-    console.log(`👨 Encontrados ${shuffledMaleNonSetters.length} homens (não levantadores) para ${numTeams} times`);
+    console.log(`⚡ Encontrados ${shuffledAttackers.length} atacantes para ${numTeams} times`);
+    console.log(`👩 Encontradas ${shuffledFemales.length} mulheres (sem posição específica) para ${numTeams} times`);
+    console.log(`👨 Encontrados ${shuffledMaleNonSettersNonAttackers.length} homens (sem posição específica) para ${numTeams} times`);
     
     // FASE 1: Distribui levantadores igualitariamente primeiro
     distributeSettersEqually(shuffledSetters, teams);
     
-    // FASE 2: Distribui mulheres igualitariamente
+    // FASE 2: Distribui atacantes igualitariamente
+    distributeAttackersEqually(shuffledAttackers, teams, maxPlayersPerTeam);
+    
+    // FASE 3: Distribui mulheres igualitariamente
     distributeFemalesEqually(shuffledFemales, teams, maxPlayersPerTeam);
     
-    // FASE 3: Preenche sequencialmente com os homens restantes
-    fillTeamsSequentiallyWithMales(shuffledMaleNonSetters, teams, maxPlayersPerTeam);
+    // FASE 4: Preenche sequencialmente com os homens restantes
+    fillTeamsSequentiallyWithMales(shuffledMaleNonSettersNonAttackers, teams, maxPlayersPerTeam);
     
     // Log final da distribuição
     logFinalDistribution(teams);
     
-    console.log('✅ Distribuição sequencial com levantadores e mulheres igualitários concluída');
+    console.log('✅ Distribuição sequencial com levantadores, atacantes e mulheres igualitários concluída');
 }
 
 // FASE 1: Distribui levantadores de forma igualitária entre todos os times
@@ -1752,9 +1833,48 @@ function distributeSettersEqually(setters, teams) {
     });
 }
 
-// FASE 2: Distribui mulheres (não levantadoras) de forma igualitária entre todos os times
+// FASE 2: Distribui atacantes de forma igualitária entre todos os times
+function distributeAttackersEqually(attackers, teams, maxPlayersPerTeam) {
+    console.log(`\n⚡ FASE 2: Distribuindo ${attackers.length} atacantes igualitariamente`);
+    
+    // Distribui atacantes em ordem circular (round-robin)
+    for (let i = 0; i < attackers.length; i++) {
+        const teamIndex = i % teams.length; // Distribui ciclicamente
+        const attacker = attackers[i];
+        
+        // Verifica se o time ainda tem espaço
+        if (teams[teamIndex].length < maxPlayersPerTeam) {
+            teams[teamIndex].push(attacker);
+            console.log(`📍 Atacante ${attacker.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador)`);
+        } else {
+            // Se o time está cheio, procura outro time com espaço
+            let placed = false;
+            for (let j = 0; j < teams.length; j++) {
+                const alternativeTeamIndex = (teamIndex + j) % teams.length;
+                if (teams[alternativeTeamIndex].length < maxPlayersPerTeam) {
+                    teams[alternativeTeamIndex].push(attacker);
+                    console.log(`📍 ${attacker.name} → Time ${alternativeTeamIndex + 1} (${teams[alternativeTeamIndex].length}° jogador) [realocado]`);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                console.log(`⚠️ ${attacker.name} não pôde ser alocado - todos os times estão cheios`);
+            }
+        }
+    }
+    
+    // Mostra estatísticas dos atacantes por time
+    console.log(`\n📊 Atacantes por time:`);
+    teams.forEach((team, index) => {
+        const attackersInTeam = team.filter(p => p.isAttacker).length;
+        console.log(`  Time ${index + 1}: ${attackersInTeam} atacante(s)`);
+    });
+}
+
+// FASE 3: Distribui mulheres (sem posição específica) de forma igualitária entre todos os times
 function distributeFemalesEqually(females, teams, maxPlayersPerTeam) {
-    console.log(`\n👩 FASE 2: Distribuindo ${females.length} mulheres igualitariamente`);
+    console.log(`\n👩 FASE 3: Distribuindo ${females.length} mulheres igualitariamente`);
     
     // Distribui mulheres em ordem circular (round-robin)
     for (let i = 0; i < females.length; i++) {
@@ -1832,15 +1952,22 @@ function logFinalDistribution(teams) {
     console.log('\n📋 DISTRIBUIÇÃO FINAL:');
     teams.forEach((team, index) => {
         const settersCount = team.filter(p => p.isSetter).length;
+        const attackersCount = team.filter(p => p.isAttacker).length;
         const femaleCount = team.filter(p => p.gender === 'feminino').length;
         const maleCount = team.filter(p => p.gender === 'masculino').length;
         
-        console.log(`  Time ${index + 1}: ${team.length} jogadores (${settersCount} levantadores, ${femaleCount}F, ${maleCount}M)`);
+        console.log(`  Time ${index + 1}: ${team.length} jogadores (${settersCount} levantadores, ${attackersCount} atacantes, ${femaleCount}F, ${maleCount}M)`);
         
         // Lista os levantadores do time
         const teamSetters = team.filter(p => p.isSetter);
         if (teamSetters.length > 0) {
             console.log(`    Levantadores: ${teamSetters.map(p => p.name).join(', ')}`);
+        }
+        
+        // Lista os atacantes do time
+        const teamAttackers = team.filter(p => p.isAttacker);
+        if (teamAttackers.length > 0) {
+            console.log(`    Atacantes: ${teamAttackers.map(p => p.name).join(', ')}`);
         }
         
         // Lista as mulheres do time
@@ -1853,12 +1980,15 @@ function logFinalDistribution(teams) {
     // Estatísticas gerais de distribuição
     const totalFemales = teams.reduce((sum, team) => sum + team.filter(p => p.gender === 'feminino').length, 0);
     const totalSetters = teams.reduce((sum, team) => sum + team.filter(p => p.isSetter).length, 0);
+    const totalAttackers = teams.reduce((sum, team) => sum + team.filter(p => p.isAttacker).length, 0);
     
     console.log(`\n📊 RESUMO DA DISTRIBUIÇÃO:`);
     console.log(`  Total de mulheres: ${totalFemales} (distribuídas entre ${teams.length} times)`);
     console.log(`  Total de levantadores: ${totalSetters} (distribuídos entre ${teams.length} times)`);
+    console.log(`  Total de atacantes: ${totalAttackers} (distribuídos entre ${teams.length} times)`);
     console.log(`  Média de mulheres por time: ${(totalFemales / teams.length).toFixed(1)}`);
     console.log(`  Média de levantadores por time: ${(totalSetters / teams.length).toFixed(1)}`);
+    console.log(`  Média de atacantes por time: ${(totalAttackers / teams.length).toFixed(1)}`);
 }
 
 // Distribui jogadores restantes quando todos os times principais estão cheios
@@ -2076,6 +2206,7 @@ function showTeamStats(teams) {
     teams.forEach((team, index) => {
         const teamScore = calculateTeamScore(team);
         const setters = team.filter(p => p.isSetter).length;
+        const attackers = team.filter(p => p.isAttacker).length;
         const females = team.filter(p => p.gender === 'feminino').length;
         const males = team.filter(p => p.gender === 'masculino').length;
         
@@ -2087,6 +2218,7 @@ function showTeamStats(teams) {
         console.log(`\n🏐 TIME ${index + 1} (${team.length} jogadores):`);
         console.log(`  📊 Pontuação: ${teamScore}`);
         console.log(`  🏐 Levantadores: ${setters}`);
+        console.log(`  ⚡ Atacantes: ${attackers}`);
         console.log(`  👥 Gênero: ${females}F / ${males}M`);
         console.log(`  ⭐ Níveis: ${Object.entries(levelCounts).map(([level, count]) => `${level}(${count})`).join(', ')}`);
     });
@@ -2270,11 +2402,12 @@ function createSimpleTeamElement(team, index) {
 function createCompactSummary(teams) {
     const totalPlayers = teams.reduce((sum, team) => sum + team.length, 0);
     const totalSetters = teams.reduce((sum, team) => sum + team.filter(p => p.isSetter).length, 0);
+    const totalAttackers = teams.reduce((sum, team) => sum + team.filter(p => p.isAttacker).length, 0);
     
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'alert alert-success mt-4 text-center';
     summaryDiv.innerHTML = `
-        <strong>📊 Resumo:</strong> ${teams.length} times | ${totalPlayers} jogadores | ${totalSetters} levantadores
+        <strong>📊 Resumo:</strong> ${teams.length} times | ${totalPlayers} jogadores | ${totalSetters} levantadores | ${totalAttackers} atacantes
     `;
     
     return summaryDiv;
@@ -2285,16 +2418,17 @@ function createTeamsSummary(teams) {
     const totalPlayers = teams.reduce((sum, team) => sum + team.length, 0);
     const avgScore = teams.reduce((sum, team) => sum + calculateTeamScore(team), 0) / teams.length;
     const totalSetters = teams.reduce((sum, team) => sum + team.filter(p => p.isSetter).length, 0);
+    const totalAttackers = teams.reduce((sum, team) => sum + team.filter(p => p.isAttacker).length, 0);
     
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'alert alert-info mb-4';
     summaryDiv.innerHTML = `
         <div class="row text-center">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <strong>${teams.length}</strong><br>
                 <small>Times</small>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <strong>${totalPlayers}</strong><br>
                 <small>Jogadores</small>
             </div>
@@ -2302,9 +2436,13 @@ function createTeamsSummary(teams) {
                 <strong>${avgScore.toFixed(1)}</strong><br>
                 <small>Pontuação Média</small>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <strong>${totalSetters}</strong><br>
                 <small>Levantadores</small>
+            </div>
+            <div class="col-md-3">
+                <strong>${totalAttackers}</strong><br>
+                <small>Atacantes</small>
             </div>
         </div>
     `;
@@ -2319,6 +2457,7 @@ function createTeamElementEnhanced(team, index) {
     // Calcula estatísticas do time
     const teamScore = calculateTeamScore(team);
     const setters = team.filter(p => p.isSetter).length;
+    const attackers = team.filter(p => p.isAttacker).length;
     const females = team.filter(p => p.gender === 'feminino').length;
     const males = team.filter(p => p.gender === 'masculino').length;
     
@@ -2343,11 +2482,13 @@ function createTeamElementEnhanced(team, index) {
                         <span class="badge bg-primary me-2">📊 ${teamScore} pts</span>
                         <span class="badge bg-info me-2">👥 ${team.length} jogadores</span>
                         ${setters > 0 ? `<span class="badge bg-warning">🏐 ${setters} levantador(es)</span>` : '<span class="badge bg-danger">⚠️ Sem levantador</span>'}
+                        ${attackers > 0 ? `<span class="badge bg-success">⚡ ${attackers} atacante(s)</span>` : ''}
                     </div>
                 </div>
                 <div class="mt-2">
                     <small class="text-muted">
                         <strong>Gênero:</strong> ${females} ♀ / ${males} ♂ | 
+                        <strong>Posições:</strong> ${setters}L ${attackers}A |
                         <strong>Níveis:</strong> ${levelBadges}
                     </small>
                 </div>
@@ -2355,13 +2496,14 @@ function createTeamElementEnhanced(team, index) {
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush">
                     ${team.map((player, playerIndex) => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''}">
+                        <li class="list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''} ${player.isAttacker ? 'attacker' : ''}">
                             <div class="player-info">
                                 <span class="fw-bold">${playerIndex + 1}. ${player.name}</span>
                                 <span class="badge role-badge ${player.gender} ms-2">
                                     ${player.gender.charAt(0).toUpperCase()}
                                 </span>
                                 ${player.isSetter ? '<span class="setter-badge ms-1">L</span>' : ''}
+                                ${player.isAttacker ? '<span class="attacker-badge ms-1">A</span>' : ''}
                             </div>
                             <div class="player-level">
                                 <span class="badge bg-secondary">${player.level}</span>
@@ -2447,11 +2589,13 @@ function calculateSuggestedTeams() {
 // Funções de exemplo para testes
 async function createSamplePlayers() {
     const samplePlayers = [
-        { name: "João Silva", level: "bom", gender: "masculino", isSetter: false },
-        { name: "Maria Santos", level: "ótimo", gender: "feminino", isSetter: true },
-        { name: "Pedro Costa", level: "delicioso", gender: "masculino", isSetter: false },
-        { name: "Ana Oliveira", level: "bom", gender: "feminino", isSetter: false },
-        { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true }
+        { name: "João Silva", level: "bom", gender: "masculino", isSetter: false, isAttacker: true },
+        { name: "Maria Santos", level: "ótimo", gender: "feminino", isSetter: true, isAttacker: false },
+        { name: "Pedro Costa", level: "delicioso", gender: "masculino", isSetter: false, isAttacker: false },
+        { name: "Ana Oliveira", level: "bom", gender: "feminino", isSetter: false, isAttacker: true },
+        { name: "Carlos Lima", level: "ok", gender: "masculino", isSetter: true, isAttacker: false },
+        { name: "Felipe Atacante", level: "ótimo", gender: "masculino", isSetter: false, isAttacker: true },
+        { name: "Laura Levantadora", level: "bom", gender: "feminino", isSetter: true, isAttacker: false }
     ];
     
     console.log('🔧 Criando jogadores de exemplo...');
@@ -2471,7 +2615,7 @@ async function createSamplePlayers() {
         console.log('🔥 API não disponível, usando Firebase direto...');
         
         for (const player of samplePlayers) {
-            await savePlayerDirectlyToFirebase(player.name, player.level, player.gender, player.isSetter, `temp_${Date.now()}`);
+            await savePlayerDirectlyToFirebase(player.name, player.level, player.gender, player.isSetter, player.isAttacker, `temp_${Date.now()}`);
         }
     }
     
@@ -2520,6 +2664,358 @@ function testFirebaseConnection() {
     
     return true;
 }
+
+// ========================================
+// FUNCIONALIDADES DO BUSCADOR DE JOGADORES
+// ========================================
+
+let searchResults = {
+    current: [],
+    saved: [],
+    isEmpty: true
+};
+
+/**
+ * Manipula a busca de jogadores em tempo real
+ * @param {Event} e - Evento de input
+ */
+function handlePlayerSearch(e) {
+    const searchTerm = e.target.value.trim().toLowerCase();
+    
+    // Mostra/esconde botão de limpar
+    updateClearButton(searchTerm);
+    
+    if (!searchTerm) {
+        clearSearchResults();
+        return;
+    }
+    
+    // Busca nos jogadores atuais
+    const currentResults = searchInCurrentPlayers(searchTerm);
+    
+    // Busca nos jogadores salvos
+    const savedResults = searchInSavedPlayers(searchTerm);
+    
+    // Atualiza resultados
+    searchResults = {
+        current: currentResults,
+        saved: savedResults,
+        isEmpty: currentResults.length === 0 && savedResults.length === 0
+    };
+    
+    // Aplica filtros visuais
+    applySearchHighlights(searchTerm);
+    
+    // Expande automaticamente o banco se houver resultados salvos
+    if (savedResults.length > 0 && !elements.savedList.classList.contains('expanded')) {
+        toggleSavedPlayersList();
+    }
+}
+
+/**
+ * Busca jogadores na lista atual
+ * @param {string} searchTerm - Termo de busca
+ * @returns {Array} Jogadores encontrados
+ */
+function searchInCurrentPlayers(searchTerm) {
+    return players.filter(player => 
+        player.name.toLowerCase().includes(searchTerm) ||
+        player.level.toLowerCase().includes(searchTerm) ||
+        player.gender.toLowerCase().includes(searchTerm) ||
+        (player.isSetter && 'levantador'.includes(searchTerm)) ||
+        (player.isAttacker && 'atacante'.includes(searchTerm))
+    );
+}
+
+/**
+ * Busca jogadores no banco de dados salvos
+ * @param {string} searchTerm - Termo de busca
+ * @returns {Array} Jogadores encontrados
+ */
+function searchInSavedPlayers(searchTerm) {
+    return savedPlayers.filter(player => 
+        player.name.toLowerCase().includes(searchTerm) ||
+        player.level.toLowerCase().includes(searchTerm) ||
+        player.gender.toLowerCase().includes(searchTerm) ||
+        (player.isSetter && 'levantador'.includes(searchTerm)) ||
+        (player.isAttacker && 'atacante'.includes(searchTerm))
+    );
+}
+
+/**
+ * Aplica destaques visuais nos resultados da busca
+ * @param {string} searchTerm - Termo de busca
+ */
+function applySearchHighlights(searchTerm) {
+    // Remove highlights anteriores
+    clearSearchHighlights();
+    
+    if (searchResults.isEmpty) {
+        showEmptySearchState();
+        return;
+    }
+    
+    // Destaca jogadores atuais
+    highlightCurrentPlayers(searchResults.current);
+    
+    // Destaca jogadores salvos
+    highlightSavedPlayers(searchResults.saved);
+    
+    // Esconde jogadores que não correspondem
+    hideNonMatchingPlayers();
+    
+    // Mostra informações dos resultados
+    showSearchResultsInfo();
+}
+
+/**
+ * Destaca jogadores na lista atual
+ * @param {Array} matchingPlayers - Jogadores que correspondem à busca
+ */
+function highlightCurrentPlayers(matchingPlayers) {
+    const playerElements = elements.list.querySelectorAll('.list-group-item');
+    
+    playerElements.forEach(element => {
+        const playerInfo = element.querySelector('.player-info');
+        if (!playerInfo) return;
+        
+        const playerName = playerInfo.querySelector('.player-name').textContent;
+        const matchingPlayer = matchingPlayers.find(p => p.name === playerName);
+        
+        if (matchingPlayer) {
+            element.classList.add('player-highlighted');
+            element.style.display = '';
+        } else {
+            element.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * Destaca jogadores salvos
+ * @param {Array} matchingPlayers - Jogadores que correspondem à busca
+ */
+function highlightSavedPlayers(matchingPlayers) {
+    const savedElements = elements.savedList.querySelectorAll('.saved-player');
+    
+    savedElements.forEach(element => {
+        const playerName = element.querySelector('.saved-player-name').textContent;
+        const matchingPlayer = matchingPlayers.find(p => p.name === playerName);
+        
+        if (matchingPlayer) {
+            element.classList.add('player-highlighted');
+            element.style.display = 'flex';
+        } else {
+            element.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * Esconde jogadores que não correspondem à busca
+ */
+function hideNonMatchingPlayers() {
+    // Já implementado nas funções de highlight acima
+}
+
+/**
+ * Mostra informações sobre os resultados da busca
+ */
+function showSearchResultsInfo() {
+    removeExistingSearchInfo();
+    
+    const total = searchResults.current.length + searchResults.saved.length;
+    
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'search-results-info';
+    infoDiv.innerHTML = `
+        <i class="bi bi-search"></i>
+        <strong>${total} jogador(es) encontrado(s)</strong> 
+        (${searchResults.current.length} na lista atual, ${searchResults.saved.length} no banco)
+    `;
+    
+    // Insere após o buscador
+    const searchSection = document.querySelector('.search-section');
+    if (searchSection) {
+        searchSection.insertAdjacentElement('afterend', infoDiv);
+    }
+}
+
+/**
+ * Mostra estado vazio quando nenhum resultado é encontrado
+ */
+function showEmptySearchState() {
+    removeExistingSearchInfo();
+    
+    // Esconde todos os jogadores
+    const allPlayerElements = [
+        ...elements.list.querySelectorAll('.list-group-item'),
+        ...elements.savedList.querySelectorAll('.saved-player')
+    ];
+    
+    allPlayerElements.forEach(element => {
+        element.style.display = 'none';
+    });
+    
+    // Mostra mensagem de vazio
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'search-empty-state';
+    emptyDiv.innerHTML = `
+        <i class="bi bi-search" style="font-size: 2rem; opacity: 0.3;"></i>
+        <p class="mb-0 mt-2">Nenhum jogador encontrado com esse nome</p>
+        <small>Tente buscar por outro nome ou limpe a busca</small>
+    `;
+    
+    // Insere após o buscador
+    const searchSection = document.querySelector('.search-section');
+    if (searchSection) {
+        searchSection.insertAdjacentElement('afterend', emptyDiv);
+    }
+}
+
+/**
+ * Remove informações de busca existentes
+ */
+function removeExistingSearchInfo() {
+    const existingInfo = [
+        ...document.querySelectorAll('.search-results-info'),
+        ...document.querySelectorAll('.search-empty-state')
+    ];
+    
+    existingInfo.forEach(element => element.remove());
+}
+
+/**
+ * Remove todos os destaques da busca
+ */
+function clearSearchHighlights() {
+    const highlightedElements = [
+        ...document.querySelectorAll('.player-highlighted')
+    ];
+    
+    highlightedElements.forEach(element => {
+        element.classList.remove('player-highlighted');
+    });
+}
+
+/**
+ * Limpa completamente os resultados da busca
+ */
+function clearSearchResults() {
+    console.log('🧹 Limpando resultados da busca');
+    
+    // Remove highlights
+    clearSearchHighlights();
+    
+    // Remove informações de busca
+    removeExistingSearchInfo();
+    
+    // Mostra todos os jogadores novamente
+    const allPlayerElements = [
+        ...elements.list.querySelectorAll('.list-group-item'),
+        ...elements.savedList.querySelectorAll('.saved-player')
+    ];
+    
+    allPlayerElements.forEach(element => {
+        element.style.display = '';
+    });
+    
+    // Reseta resultados
+    searchResults = {
+        current: [],
+        saved: [],
+        isEmpty: true
+    };
+}
+
+/**
+ * Atualiza a visibilidade do botão de limpar busca
+ * @param {string} searchTerm - Termo de busca atual
+ */
+function updateClearButton(searchTerm) {
+    if (elements.clearSearchBtn) {
+        if (searchTerm.length > 0) {
+            elements.clearSearchBtn.classList.add('show');
+        } else {
+            elements.clearSearchBtn.classList.remove('show');
+        }
+    }
+}
+
+/**
+ * Limpa o campo de busca e resultados
+ */
+function clearPlayerSearch() {
+    if (elements.searchInput) {
+        elements.searchInput.value = '';
+        elements.searchInput.focus();
+    }
+    
+    clearSearchResults();
+    updateClearButton('');
+}
+
+/**
+ * Manipula teclas especiais no buscador
+ * @param {KeyboardEvent} e - Evento de teclado
+ */
+function handleSearchKeydown(e) {
+    switch (e.key) {
+        case 'Escape':
+            clearPlayerSearch();
+            break;
+            
+        case 'Enter':
+            e.preventDefault();
+            // Se houver apenas um resultado, poderia selecioná-lo automaticamente
+            if (searchResults.current.length === 1 && searchResults.saved.length === 0) {
+                const player = searchResults.current[0];
+                showAlert(`Jogador encontrado: ${player.name}`, 'info');
+            } else if (searchResults.current.length === 0 && searchResults.saved.length === 1) {
+                const player = searchResults.saved[0];
+                addPlayerFromSaved(player.id);
+            }
+            break;
+    }
+}
+
+/**
+ * Inicializa o banco de jogadores em estado fechado
+ */
+function initializeBankCollapsed() {
+    console.log('🏦 Inicializando banco de jogadores em estado fechado');
+    
+    if (elements.savedList) {
+        elements.savedList.style.display = 'none';
+        elements.savedList.classList.remove('expanded');
+    }
+    
+    if (elements.toggleSavedBtn) {
+        elements.toggleSavedBtn.innerHTML = '<i class="bi bi-chevron-right"></i><span class="ms-1">Expandir</span>';
+        elements.toggleSavedBtn.classList.remove('expanded');
+    }
+    
+    console.log('✅ Banco de jogadores inicializado fechado');
+}
+
+/**
+ * Inicializa a interface de busca minimalista
+ */
+function initializeSearch() {
+    // Esconde o botão de limpar inicialmente
+    if (elements.clearSearchBtn) {
+        elements.clearSearchBtn.classList.remove('show');
+    }
+    
+    // Garante estado inicial limpo
+    if (elements.searchInput && !elements.searchInput.value) {
+        updateClearButton('');
+    }
+}
+
+// ========================================
+// FIM DAS FUNCIONALIDADES DO BUSCADOR
+// ========================================
 
 // Inicializa a aplicação
 document.addEventListener('DOMContentLoaded', init);

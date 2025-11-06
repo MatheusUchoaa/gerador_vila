@@ -68,11 +68,23 @@
                                 </div>
                             </div>
                             
-                            <div class="form-check mb-4">
-                                <input class="form-check-input" type="checkbox" id="player-setter">
-                                <label class="form-check-label" for="player-setter">
-                                    <i class="bi bi-hand-index-thumb"></i> Este jogador é levantador
-                                </label>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="player-setter">
+                                        <label class="form-check-label" for="player-setter">
+                                            <i class="bi bi-hand-index-thumb"></i> Este jogador é levantador
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="player-attacker">
+                                        <label class="form-check-label" for="player-attacker">
+                                            <i class="bi bi-lightning-charge"></i> Este jogador é atacante
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="d-grid gap-2">
@@ -91,6 +103,18 @@
                             <h2 class="mb-0">Jogadores Adicionados</h2>
                             <span class="badge bg-primary rounded-pill" id="player-count">0</span>
                         </div>
+
+                        <!-- Buscador de Jogadores -->
+                        <div class="search-section mb-3">
+                            <div class="search-input-wrapper">
+                                <i class="bi bi-search search-icon"></i>
+                                <input type="text" id="player-search" class="form-control search-input" placeholder="Buscar jogador..." autocomplete="off">
+                                <button type="button" id="clear-search" class="clear-btn" title="Limpar">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            </small>
+                        </div>
                         
                         <div class="alert alert-info d-flex align-items-center mb-3">
                             <i class="bi bi-info-circle-fill me-2"></i>
@@ -101,17 +125,18 @@
                         
                         <div id="player-database" class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">Banco de Jogadores</h5>
+                                <h5 class="mb-0">Banco de Jogadores <span class="badge bg-secondary ms-2" id="saved-count">0</span></h5>
                                 <div class="d-flex gap-2">
                                     <button class="btn btn-sm btn-outline-success" id="reload-firebase-players" title="Recarregar jogadores do Firebase">
                                         <i class="bi bi-arrow-clockwise"></i>
                                     </button>
                                     <button class="btn btn-sm btn-outline-primary" id="toggle-saved-players">
-                                        <i class="bi bi-chevron-down"></i>
+                                        <i class="bi bi-chevron-right"></i>
+                                        <span class="ms-1">Expandir</span>
                                     </button>
                                 </div>
                             </div>
-                            <div class="d-flex flex-wrap gap-2" id="saved-players-list">
+                            <div class="d-flex flex-wrap gap-2" id="saved-players-list" style="display: none;">
                                 <!-- Jogadores salvos aparecerão aqui -->
                             </div>
                         </div>
