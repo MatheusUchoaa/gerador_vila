@@ -638,22 +638,32 @@ function createPlayerElement(player) {
     li.className = `list-group-item d-flex justify-content-between align-items-center ${player.isSetter ? 'setter' : ''} ${player.isAttacker ? 'attacker' : ''}`;
     
     li.innerHTML = `
-        <div class="player-info" data-id="${player.id}">
-            <span class="player-name">${player.name}</span>
-            <span class="level-stars ms-2">${getLevelStars(player.level)}</span>
-            <span class="badge role-badge ${player.gender}">
-                ${player.gender.charAt(0).toUpperCase()}
-            </span>
-            ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
-            ${player.isAttacker ? '<span class="attacker-badge">A</span>' : ''}
+        <div class="player-card-wrapper" data-id="${player.id}">
+            <div class="player-main-info">
+                <div class="player-avatar ${player.gender}">
+                    ${player.gender === 'masculino' ? 'M' : 'F'}
+                </div>
+                <div class="player-details">
+                    <span class="player-name">${player.name}</span>
+                    <div class="player-attributes">
+                        <span class="level-stars">${getLevelStars(player.level)}</span>
+                        ${player.isSetter ? '<span class="position-badge setter">L</span>' : ''}
+                        ${player.isAttacker ? '<span class="position-badge attacker">A</span>' : ''}
+                    </div>
+                </div>
+            </div>
+            <button class="delete-btn" data-id="${player.id}" title="Remover jogador">
+                <i class="bi bi-x"></i>
+            </button>
         </div>
-        <button class="btn btn-sm btn-outline-danger delete-player" data-id="${player.id}" title="Remover jogador">
-            &times;
-        </button>
     `;
     
-    li.querySelector('.player-info').addEventListener('click', () => editPlayer(player.id));
-    li.querySelector('.delete-player').addEventListener('click', (e) => {
+    li.querySelector('.player-card-wrapper').addEventListener('click', (e) => {
+        if (!e.target.closest('.delete-btn')) {
+            editPlayer(player.id);
+        }
+    });
+    li.querySelector('.delete-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         removePlayer(player.id);
     });
@@ -763,22 +773,26 @@ function updateSavedPlayersList() {
         const levelStars = getLevelStars(player.level);
         
         playerElement.innerHTML = `
-            <div class="saved-player-info">
-                <span class="saved-player-name">${player.name}</span>
-                <div class="saved-player-details">
-                    <span class="level-stars" title="Nível: ${player.level}">${levelStars}</span>
-                    <span class="badge role-badge ${player.gender}">
-                        ${player.gender.charAt(0).toUpperCase()}
-                    </span>
-                    ${player.isSetter ? '<span class="setter-badge">L</span>' : ''}
-                    ${player.isAttacker ? '<span class="attacker-badge">A</span>' : ''}
+            <div class="saved-player-card">
+                <div class="player-avatar ${player.gender}">
+                    ${player.gender === 'masculino' ? 'M' : 'F'}
                 </div>
-            </div>
-            <div class="saved-player-actions">
-                <button class="edit-saved-btn" data-id="${player.id}" title="Editar jogador">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <span class="delete-saved" data-id="${player.id}" title="Remover jogador">&times;</span>
+                <div class="player-details">
+                    <span class="saved-player-name">${player.name}</span>
+                    <div class="saved-player-attributes">
+                        <span class="level-stars" title="Nível: ${player.level}">${levelStars}</span>
+                        ${player.isSetter ? '<span class="position-badge setter">L</span>' : ''}
+                        ${player.isAttacker ? '<span class="position-badge attacker">A</span>' : ''}
+                    </div>
+                </div>
+                <div class="saved-player-actions">
+                    <button class="edit-btn" data-id="${player.id}" title="Editar jogador">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="delete-btn" data-id="${player.id}" title="Remover jogador">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
             </div>
         `;
         
@@ -790,12 +804,12 @@ function updateSavedPlayersList() {
             }
         });
         
-        playerElement.querySelector('.edit-saved-btn').addEventListener('click', (e) => {
+        playerElement.querySelector('.edit-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             editSavedPlayer(player.id);
         });
         
-        playerElement.querySelector('.delete-saved').addEventListener('click', (e) => {
+        playerElement.querySelector('.delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             removeSavedPlayer(player.id);
         });

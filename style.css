@@ -1,22 +1,22 @@
 :root {
-    --primary: #FFD700;
-    --primary-light: #FFF468;
-    --primary-dark: #FFC300;
-    --secondary: #C9A0DC;
-    --secondary-light: #D9CCE8;
-    --secondary-dark: #B399D4;
-    --accent: #E6E6FA;
-    --dark: #2E2D4D;
-    --darker: #1A1A2E;
-    --light: #F8F4FF;
+    --primary: #6B7280;
+    --primary-light: #9CA3AF;
+    --primary-dark: #4B5563;
+    --secondary: #64748B;
+    --secondary-light: #94A3B8;
+    --secondary-dark: #475569;
+    --accent: #F1F5F9;
+    --dark: #1E293B;
+    --darker: #0F172A;
+    --light: #F8FAFC;
     --lighter: #FFFFFF;
-    --male-color: #FFD700;
-    --male-light: #FFF9C4;
-    --female-color: #C9A0DC;
-    --female-light: #E6D4F0;
-    --success: #A3D8A5;
-    --warning: #FFD166;
-    --error: #FF8A8A;
+    --male-color: #6B7280;
+    --male-light: #F3F4F6;
+    --female-color: #9CA3AF;
+    --female-light: #F9FAFB;
+    --success: #6B7280;
+    --warning: #9CA3AF;
+    --error: #6B7280;
 }
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -109,11 +109,12 @@ main section {
 }
 .btn-add {
     background-color: var(--primary);
-    color: var(--darker);
+    color: #1F2937;
     border: none;
 }
 .btn-add:hover {
     background-color: var(--primary-dark);
+    color: #111827;
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -133,7 +134,7 @@ main section {
     border: none;
 }
 .btn-clear:hover {
-    background-color: #ff6b6b;
+    background-color: var(--error);
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -163,73 +164,63 @@ main section {
 #saved-players-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-}
-.saved-player {
-    background-color: var(--primary-light);
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    border: 1px solid var(--primary-dark);
-    cursor: pointer;
-    min-width: 200px;
+    gap: 12px;
 }
 
-.saved-player-info {
+.saved-player {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-width: 240px;
+    border: 2px solid transparent;
+    overflow: hidden;
+}
+
+.saved-player:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border-color: var(--accent);
+}
+
+.saved-player-card {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    padding: 14px;
+    gap: 12px;
+}
+
+.saved-player .player-details {
     flex: 1;
 }
 
 .saved-player-name {
-    font-weight: 500;
-    color: #333;
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--dark);
+    margin-bottom: 4px;
 }
 
-.saved-player-details {
+.saved-player-attributes {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
-    min-height: 24px;
 }
 
-.level-stars {
-    font-size: 0.8rem;
-    color: #ffa500;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-    display: inline-flex;
-    align-items: center;
-    height: 20px;
-    line-height: 1;
-}
-
-.saved-player:hover {
-    background-color: var(--primary);
-    transform: translateY(-2px);
-}
-
-/* Estilos para edição de jogadores do Firebase */
 .saved-player-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: auto;
+    gap: 4px;
 }
 
-.edit-saved-btn {
-    background: #0d6efd;
-    color: white;
+.saved-player .edit-btn,
+.saved-player .delete-btn {
+    width: 28px;
+    height: 28px;
     border: none;
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -238,19 +229,38 @@ main section {
     font-size: 12px;
 }
 
-.edit-saved-btn:hover {
-    background: #0b5ed7;
+.saved-player .edit-btn {
+    background: var(--accent);
+    color: var(--primary);
+}
+
+.saved-player .edit-btn:hover {
+    background: var(--primary);
+    color: white;
     transform: scale(1.1);
 }
 
+.saved-player .delete-btn {
+    background: #FEF2F2;
+    color: var(--error);
+}
+
+.saved-player .delete-btn:hover {
+    background: var(--error);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Estilos para edição de jogadores do Firebase - Mantidos para compatibilidade */
+
 .editing-firebase-player {
-    border: 2px solid #ff6b35 !important;
-    box-shadow: 0 0 15px rgba(255, 107, 53, 0.3);
+    border: 2px solid var(--primary) !important;
+    box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
     transition: all 0.3s ease;
 }
 
 .firebase-edit-badge {
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
     padding: 8px 16px;
     border-radius: 8px;
@@ -264,10 +274,10 @@ main section {
 
 @keyframes pulseGlow {
     0%, 100% { 
-        box-shadow: 0 0 10px rgba(255, 107, 53, 0.5); 
+        box-shadow: 0 0 10px rgba(107, 114, 128, 0.4); 
     }
     50% { 
-        box-shadow: 0 0 20px rgba(255, 107, 53, 0.8); 
+        box-shadow: 0 0 20px rgba(107, 114, 128, 0.6); 
     }
 }
 
@@ -287,44 +297,23 @@ main section {
     }
 }
 
-/* Estilos para botões de exclusão */
-.delete-saved {
-    background: #dc3545;
-    color: white;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 16px;
-    font-weight: bold;
-    margin-left: 4px;
-}
-
-.delete-saved:hover {
-    background: #c82333;
-    transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
-}
+/* Estilos de botões removidos - usando novos estilos minimalistas */
 
 /* Animação de confirmação para exclusão */
 .deleting-player {
-    background: linear-gradient(45deg, #ffebee, #ffcdd2);
-    border: 2px solid #f44336;
+    background: linear-gradient(45deg, #FEF2F2, #FECACA);
+    border: 2px solid var(--error);
     animation: deleteWarning 1s infinite;
 }
 
 @keyframes deleteWarning {
     0%, 100% { 
-        border-color: #f44336; 
-        background: linear-gradient(45deg, #ffebee, #ffcdd2);
+        border-color: var(--error); 
+        background: linear-gradient(45deg, #FEF2F2, #FECACA);
     }
     50% { 
-        border-color: #d32f2f; 
-        background: linear-gradient(45deg, #ffcdd2, #ef9a9a);
+        border-color: #DC2626; 
+        background: linear-gradient(45deg, #FECACA, #FCA5A5);
     }
 }
 .firebase-indicator {
@@ -338,115 +327,133 @@ main section {
 #player-list {
     max-height: 300px;
     overflow-y: auto;
-    border-radius: 8px;
-    border: 1px solid var(--secondary-light);
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    padding: 8px;
 }
+
+/* Novos estilos minimalistas para cards de jogadores */
 .list-group-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 15px;
-    border-left: 4px solid var(--primary);
-    transition: all 0.2s;
-    background-color: var(--lighter);
-    border-bottom: 1px solid var(--secondary-light);
+    background: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
     cursor: pointer;
+    overflow: hidden;
 }
+
 .list-group-item:hover {
-    background-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
-.player-info {
+
+.player-card-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-grow: 1;
-}
-.gender-badge {
-    color: var(--darker);
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 20px;
-    line-height: 1;
-}
-.gender-badge.male {
-    background-color: var(--male-color);
-}
-.gender-badge.female {
-    background-color: var(--female-color);
+    padding: 16px;
+    gap: 12px;
+    width: 100%;
 }
 
-/* Estilos para badges de jogadores (role-badge) */
-.badge.role-badge {
-    color: var(--darker) !important;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    display: inline-flex;
+.player-main-info {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 20px;
-    line-height: 1;
+    gap: 12px;
+    flex: 1;
 }
 
-.badge.role-badge.masculino {
-    background-color: var(--male-color) !important;
-}
-
-.badge.role-badge.feminino {
-    background-color: var(--female-color) !important;
-}
-.setter-badge {
-    color: var(--darker);
-    background-color: var(--warning);
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    margin-left: 5px;
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 20px;
-    line-height: 1;
-}
-
-.attacker-badge {
-    color: white;
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    margin-left: 5px;
-    box-shadow: 0 1px 3px rgba(231, 76, 60, 0.4);
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 20px;
-    line-height: 1;
-}
-.delete-player, .delete-saved {
-    color: var(--error);
-    font-weight: bold;
-    cursor: pointer;
-    padding: 2px 5px;
+.player-avatar {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
-.delete-player:hover, .delete-saved:hover {
-    background-color: var(--error);
+
+.player-avatar.masculino {
+    background: linear-gradient(135deg, #6B7280, #4B5563);
+}
+
+.player-avatar.feminino {
+    background: linear-gradient(135deg, #9CA3AF, #6B7280);
+}
+
+.player-details {
+    flex: 1;
+}
+
+.player-name {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--dark);
+    margin-bottom: 4px;
+}
+
+.player-attributes {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.level-stars {
+    font-size: 14px;
+    color: var(--warning);
+    text-shadow: none;
+}
+
+.position-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
     color: white;
 }
+
+.position-badge.setter {
+    background: #4B5563;
+    box-shadow: 0 1px 4px rgba(75, 85, 99, 0.3);
+}
+
+.position-badge.attacker {
+    background: #374151;
+    box-shadow: 0 1px 4px rgba(55, 65, 81, 0.3);
+}
+
+.delete-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: #F5F5F5;
+    color: var(--secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+}
+
+.delete-btn:hover {
+    background: var(--error);
+    color: white;
+    transform: scale(1.1);
+}
+/* Estilos antigos removidos - usando design minimalista */
 #team-output {
     background-color: var(--lighter);
     border-left: 4px solid var(--secondary);
@@ -516,6 +523,39 @@ footer {
     .form-check {
         padding: 6px 8px;
     }
+    
+    /* Cards responsivos */
+    .player-card-wrapper {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .player-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .player-name {
+        font-size: 14px;
+    }
+    
+    .saved-player {
+        min-width: 200px;
+    }
+    
+    .saved-player-card {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .saved-player-name {
+        font-size: 13px;
+    }
+    
+    #saved-players-list {
+        gap: 8px;
+    }
 }
 /* Animações */
 @keyframes fadeIn {
@@ -567,17 +607,17 @@ footer {
 }
 
 .team .list-group-item.setter {
-    background: linear-gradient(90deg, #fff9c4, transparent);
-    border-left: 4px solid var(--warning);
+    background: linear-gradient(90deg, #F9FAFB, transparent);
+    border-left: 4px solid var(--primary-dark);
 }
 
 .team .list-group-item.attacker {
-    background: linear-gradient(90deg, #ffebee, transparent);
-    border-left: 4px solid #e74c3c;
+    background: linear-gradient(90deg, #F3F4F6, transparent);
+    border-left: 4px solid var(--secondary-dark);
 }
 
 .list-group-item.attacker {
-    border-left: 4px solid #e74c3c !important;
+    border-left: 4px solid var(--secondary-dark) !important;
 }
 
 .team .player-info .fw-bold {
@@ -621,7 +661,7 @@ footer {
 }
 
 .badge.bg-info {
-    background-color: #17a2b8 !important;
+    background-color: var(--primary-light) !important;
     color: white;
 }
 
@@ -669,7 +709,7 @@ footer {
 }
 @keyframes pulseDuplicate {
     0% { background-color: inherit; }
-    50% { background-color: #fff3cd; }
+    50% { background-color: #F3F4F6; }
     100% { background-color: inherit; }
 }
 
@@ -709,7 +749,7 @@ footer {
 }
 
 .team .card {
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--secondary-light);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
 }
@@ -720,9 +760,9 @@ footer {
 }
 
 .alert-success {
-    background: linear-gradient(135deg, #d4edda, #c3e6cb);
-    border: 1px solid #b3d7c5;
-    color: #155724;
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+    border: 1px solid var(--success);
+    color: #065F46;
 }
 
 /* Animação de entrada para os times */
@@ -751,15 +791,15 @@ footer {
     display: flex;
     align-items: center;
     background: white;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--secondary-light);
     border-radius: 8px;
     transition: all 0.2s ease;
     overflow: hidden;
 }
 
 .search-input-wrapper:focus-within {
-    border-color: #6f42c1;
-    box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.1);
 }
 
 .search-icon {
@@ -806,13 +846,13 @@ footer {
 #player-database {
     transition: all 0.3s ease;
     border-radius: 15px;
-    border: 2px solid rgba(111, 66, 193, 0.2);
+    border: 2px solid rgba(107, 114, 128, 0.2);
     background: rgba(255, 255, 255, 0.95);
 }
 
 #player-database:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-color: rgba(111, 66, 193, 0.4);
+    border-color: rgba(107, 114, 128, 0.4);
 }
 
 #saved-players-list {
@@ -842,19 +882,19 @@ footer {
 }
 
 #saved-players-list::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #6f42c1, #5a2d91);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-radius: 10px;
     border: 2px solid transparent;
 }
 
 #saved-players-list::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #5a2d91, #4e1f7a);
+    background: linear-gradient(135deg, var(--primary-dark), var(--secondary-dark));
 }
 
 /* Firefox scrollbar */
 #saved-players-list {
     scrollbar-width: thin;
-    scrollbar-color: #6f42c1 rgba(0,0,0,0.1);
+    scrollbar-color: var(--primary) rgba(0,0,0,0.1);
 }
 
 /* Indicadores de scroll removidos para design mais limpo */
@@ -897,7 +937,7 @@ footer {
 
 /* Indicador de contagem no banco */
 #saved-count {
-    background: linear-gradient(135deg, #6f42c1, #5a2d91);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
     font-weight: 600;
     animation: pulse 2s infinite;
@@ -906,26 +946,26 @@ footer {
 @keyframes pulse {
     0%, 100% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(111, 66, 193, 0.4);
+        box-shadow: 0 0 0 0 rgba(107, 114, 128, 0.3);
     }
     50% {
         transform: scale(1.05);
-        box-shadow: 0 0 0 10px rgba(111, 66, 193, 0);
+        box-shadow: 0 0 0 10px rgba(107, 114, 128, 0);
     }
 }
 
 /* Highlight para jogadores filtrados */
-.player-highlighted {
-    background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
-    border-left: 4px solid #ffc107 !important;
-    transform: scale(1.02);
-    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+.list-group-item.player-highlighted {
+    border: 2px solid var(--primary) !important;
+    box-shadow: 0 4px 20px rgba(107, 114, 128, 0.2) !important;
+    transform: translateY(-3px) scale(1.02);
     animation: highlightPulse 1s ease-in-out;
 }
 
 .saved-player.player-highlighted {
-    background: linear-gradient(135deg, #d1ecf1, #bee5eb) !important;
-    border: 2px solid #17a2b8 !important;
+    border: 2px solid var(--primary-dark) !important;
+    box-shadow: 0 4px 20px rgba(75, 85, 99, 0.2) !important;
+    transform: translateY(-4px) scale(1.02);
 }
 
 @keyframes highlightPulse {
@@ -941,18 +981,18 @@ footer {
 .search-empty-state {
     text-align: center;
     padding: 20px;
-    color: #6c757d;
+    color: var(--secondary);
     font-style: italic;
 }
 
 .search-results-info {
-    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-    border: 1px solid #2196f3;
+    background: linear-gradient(135deg, var(--accent), #E2E8F0);
+    border: 1px solid var(--primary);
     border-radius: 6px;
     padding: 8px 12px;
     margin: 10px 0;
     font-size: 0.9rem;
-    color: #0d47a1;
+    color: var(--darker);
 }
 
 /* Responsividade do buscador */
