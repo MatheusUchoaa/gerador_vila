@@ -1937,6 +1937,13 @@ function distributeAttackersEqually(attackers, teams, maxPlayersPerTeam) {
         const teamIndex = i % teams.length; // Distribui ciclicamente
         const attacker = attackers[i];
         
+        // Verifica se o jogador já não está em nenhum time
+        const isAlreadyInTeam = teams.some(team => team.some(p => p.id === attacker.id));
+        if (isAlreadyInTeam) {
+            console.log(`⚠️ Atacante ${attacker.name} já foi alocado - pulando...`);
+            continue;
+        }
+        
         // Verifica se o time ainda tem espaço
         if (teams[teamIndex].length < maxPlayersPerTeam) {
             teams[teamIndex].push(attacker);
@@ -2015,6 +2022,13 @@ function fillTeamsSequentiallyWithMales(maleNonSetters, teams, maxPlayersPerTeam
     for (let i = 0; i < maleNonSetters.length; i++) {
         const player = maleNonSetters[i];
         
+        // Verifica se o jogador já não está em nenhum time
+        const isAlreadyInTeam = teams.some(team => team.some(p => p.id === player.id));
+        if (isAlreadyInTeam) {
+            console.log(`⚠️ Jogador ${player.name} já foi alocado - pulando...`);
+            continue;
+        }
+        
         // Procura o próximo time que ainda tem espaço
         while (currentTeamIndex < teams.length && teams[currentTeamIndex].length >= maxPlayersPerTeam) {
             currentTeamIndex++;
@@ -2045,6 +2059,40 @@ function fillTeamsSequentiallyWithMales(maleNonSetters, teams, maxPlayersPerTeam
 // Função para mostrar distribuição final
 function logFinalDistribution(teams) {
     console.log('\n📋 DISTRIBUIÇÃO FINAL:');
+    
+    // Verifica duplicados
+    const allPlayersInTeams = [];
+    teams.forEach(team => {
+        team.forEach(player => allPlayersInTeams.push(player.id));
+    });
+    
+    const uniquePlayerIds = [...new Set(allPlayersInTeams)];
+    const totalPlayersInTeams = allPlayersInTeams.length;
+    const uniquePlayers = uniquePlayerIds.length;
+    
+    console.log(`📊 VERIFICAÇÃO DE DUPLICADOS:`);
+    console.log(`  Total de slots preenchidos: ${totalPlayersInTeams}`);
+    console.log(`  Jogadores únicos: ${uniquePlayers}`);
+    
+    if (totalPlayersInTeams !== uniquePlayers) {
+        console.error(`❌ ERRO: ${totalPlayersInTeams - uniquePlayers} jogadores duplicados detectados!`);
+        
+        // Encontra os duplicados
+        const playerCounts = {};
+        allPlayersInTeams.forEach(id => {
+            playerCounts[id] = (playerCounts[id] || 0) + 1;
+        });
+        
+        Object.entries(playerCounts).forEach(([playerId, count]) => {
+            if (count > 1) {
+                const playerName = teams.flat().find(p => p.id === playerId)?.name || 'Unknown';
+                console.error(`  🔄 ${playerName} (ID: ${playerId}) aparece ${count} vezes`);
+            }
+        });
+    } else {
+        console.log(`✅ Nenhum jogador duplicado encontrado!`);
+    }
+    
     teams.forEach((team, index) => {
         const settersCount = team.filter(p => p.isSetter).length;
         const attackersCount = team.filter(p => p.isAttacker).length;
