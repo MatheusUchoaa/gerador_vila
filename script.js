@@ -1862,62 +1862,58 @@ function generateTeams(numTeams) {
     showAlert(`${teams.length} times gerados com distribuição sequencial!`, 'success');
 }
 
-// Nova função para distribuir jogadores sequencialmente
+// Nova função para distribuir jogadores sequencialmente com distribuição igualitária por nível
 function distributePlayersSequentially(allPlayers, teams) {
     const maxPlayersPerTeam = 6;
     const totalPlayers = allPlayers.length;
     const numTeams = teams.length;
     
     console.log(`📊 Distribuindo ${totalPlayers} jogadores sequencialmente em ${numTeams} times`);
-    console.log(`🎯 Estratégia: Levantadores, atacantes e mulheres distribuídos igualitariamente, depois preenchimento sequencial`);
+    console.log(`🎯 Estratégia: Mulheres igualitariamente primeiro, depois homens por função`);
     
-    // Separa jogadores por categorias
-    const setters = allPlayers.filter(p => p.isSetter);
-    const attackers = allPlayers.filter(p => p.isAttacker && !p.isSetter);
-    const females = allPlayers.filter(p => p.gender === 'feminino' && !p.isSetter && !p.isAttacker);
-    const maleNonSettersNonAttackers = allPlayers.filter(p => p.gender === 'masculino' && !p.isSetter && !p.isAttacker);
-    
-    // Embaralha cada categoria
-    const shuffledSetters = [...setters].sort(() => Math.random() - 0.5);
-    const shuffledAttackers = [...attackers].sort(() => Math.random() - 0.5);
+    // FASE 1: Distribui TODAS as mulheres igualitariamente (independente de posição)
+    const females = allPlayers.filter(p => p.gender === 'feminino');
     const shuffledFemales = [...females].sort(() => Math.random() - 0.5);
-    const shuffledMaleNonSettersNonAttackers = [...maleNonSettersNonAttackers].sort(() => Math.random() - 0.5);
-    
-    console.log(`🏐 Encontrados ${shuffledSetters.length} levantadores para ${numTeams} times`);
-    console.log(`⚡ Encontrados ${shuffledAttackers.length} atacantes para ${numTeams} times`);
-    console.log(`👩 Encontradas ${shuffledFemales.length} mulheres (sem posição específica) para ${numTeams} times`);
-    console.log(`👨 Encontrados ${shuffledMaleNonSettersNonAttackers.length} homens (sem posição específica) para ${numTeams} times`);
-    
-    // FASE 1: Distribui levantadores igualitariamente primeiro
-    distributeSettersEqually(shuffledSetters, teams);
-    
-    // FASE 2: Distribui atacantes igualitariamente
-    distributeAttackersEqually(shuffledAttackers, teams, maxPlayersPerTeam);
-    
-    // FASE 3: Distribui mulheres igualitariamente
     distributeFemalesEqually(shuffledFemales, teams, maxPlayersPerTeam);
     
-    // FASE 4: Preenche sequencialmente com os homens restantes
-    fillTeamsSequentiallyWithMales(shuffledMaleNonSettersNonAttackers, teams, maxPlayersPerTeam);
+    // FASE 2: Distribui levantadores homens igualitariamente
+    const maleSetters = allPlayers.filter(p => p.isSetter && p.gender === 'masculino');
+    const shuffledMaleSetters = [...maleSetters].sort(() => Math.random() - 0.5);
+    distributeSettersEqually(shuffledMaleSetters, teams);
+    
+    // FASE 3: Distribui atacantes homens igualitariamente
+    const maleAttackers = allPlayers.filter(p => p.isAttacker && p.gender === 'masculino');
+    const shuffledMaleAttackers = [...maleAttackers].sort(() => Math.random() - 0.5);
+    distributeAttackersEqually(shuffledMaleAttackers, teams, maxPlayersPerTeam);
+    
+    // FASE 4: Preenche os times sequencialmente com homens restantes (sem função específica)
+    const maleNonSpecific = allPlayers.filter(p => 
+        p.gender === 'masculino' && !p.isSetter && !p.isAttacker
+    );
+    const shuffledMaleNonSpecific = [...maleNonSpecific].sort(() => Math.random() - 0.5);
+    fillTeamsSequentiallyWithMales(shuffledMaleNonSpecific, teams, maxPlayersPerTeam);
     
     // Log final da distribuição
     logFinalDistribution(teams);
     
-    console.log('✅ Distribuição sequencial com levantadores, atacantes e mulheres igualitários concluída');
+    console.log('✅ Distribuição sequencial concluída');
 }
 
-// FASE 1: Distribui levantadores de forma igualitária entre todos os times
+// FASE 2: Distribui levantadores homens de forma igualitária entre todos os times
 function distributeSettersEqually(setters, teams) {
-    console.log(`\n🏐 FASE 1: Distribuindo ${setters.length} levantadores igualitariamente`);
+    console.log(`\n🏐 FASE 2: Distribuindo ${setters.length} levantadores homens igualitariamente`);
     
     // Distribui levantadores em ordem circular (round-robin)
     for (let i = 0; i < setters.length; i++) {
         const teamIndex = i % teams.length; // Distribui ciclicamente
         const setter = setters[i];
         
-        teams[teamIndex].push(setter);
-        
-        console.log(`📍 Levantador ${setter.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador)`);
+        // Só adiciona se o jogador ainda não estiver em nenhum time
+        const isAlreadyInTeam = teams.some(team => team.some(p => p.id === setter.id));
+        if (!isAlreadyInTeam) {
+            teams[teamIndex].push(setter);
+            console.log(`📍 Levantador ${setter.name} (${setter.level}) → Time ${teamIndex + 1}`);
+        }
     }
     
     // Mostra estatísticas dos levantadores por time
@@ -1928,9 +1924,10 @@ function distributeSettersEqually(setters, teams) {
     });
 }
 
-// FASE 2: Distribui atacantes de forma igualitária entre todos os times
+// FASE 3: Nova função para distribuir jogadores por nível de habilidade igualitariamente
+// FASE 3: Distribui atacantes homens de forma igualitária entre todos os times
 function distributeAttackersEqually(attackers, teams, maxPlayersPerTeam) {
-    console.log(`\n⚡ FASE 2: Distribuindo ${attackers.length} atacantes igualitariamente`);
+    console.log(`\n⚡ FASE 3: Distribuindo ${attackers.length} atacantes homens igualitariamente`);
     
     // Distribui atacantes em ordem circular (round-robin)
     for (let i = 0; i < attackers.length; i++) {
@@ -1967,9 +1964,9 @@ function distributeAttackersEqually(attackers, teams, maxPlayersPerTeam) {
     });
 }
 
-// FASE 3: Distribui mulheres (sem posição específica) de forma igualitária entre todos os times
+// FASE 1: Distribui todas as mulheres (incluindo levantadoras e atacantes) de forma igualitária entre todos os times
 function distributeFemalesEqually(females, teams, maxPlayersPerTeam) {
-    console.log(`\n👩 FASE 3: Distribuindo ${females.length} mulheres igualitariamente`);
+    console.log(`\n👩 FASE 1: Distribuindo ${females.length} mulheres igualitariamente (incluindo levantadoras e atacantes)`);
     
     // Distribui mulheres em ordem circular (round-robin)
     for (let i = 0; i < females.length; i++) {
@@ -2006,9 +2003,9 @@ function distributeFemalesEqually(females, teams, maxPlayersPerTeam) {
     });
 }
 
-// FASE 3: Preenche os times sequencialmente com os homens restantes
+// FASE 4: Preenche os times sequencialmente com os homens restantes (sem função específica)
 function fillTeamsSequentiallyWithMales(maleNonSetters, teams, maxPlayersPerTeam) {
-    console.log(`\n� FASE 3: Preenchendo sequencialmente com ${maleNonSetters.length} homens restantes`);
+    console.log(`\n👨 FASE 4: Preenchendo sequencialmente com ${maleNonSetters.length} homens sem função específica`);
     
     let currentTeamIndex = 0;
     
@@ -2246,37 +2243,7 @@ function distributePlayersByLevelOrganized(players, teams, maxPerTeam, category)
 }
 
 // Distribui jogadores restantes
-function distributeRemainingPlayers(remainingPlayers, teams, maxPerTeam) {
-    if (remainingPlayers.length === 0) return;
-    
-    console.log(`🔄 Distribuindo ${remainingPlayers.length} jogadores restantes`);
-    
-    let playerIndex = 0;
-    
-    while (playerIndex < remainingPlayers.length) {
-        let placed = false;
-        
-        for (let teamIndex = 0; teamIndex < teams.length && playerIndex < remainingPlayers.length; teamIndex++) {
-            if (teams[teamIndex].length < maxPerTeam) {
-                teams[teamIndex].push(remainingPlayers[playerIndex]);
-                console.log(`📍 ${remainingPlayers[playerIndex].name} → Time ${teamIndex + 1}`);
-                playerIndex++;
-                placed = true;
-            }
-        }
-        
-        if (!placed) {
-            // Se todos os times estão com 6 jogadores, distribui o resto
-            const teamWithFewest = teams.reduce((minTeam, team, index) => 
-                team.length < teams[minTeam].length ? index : minTeam, 0
-            );
-            
-            teams[teamWithFewest].push(remainingPlayers[playerIndex]);
-            console.log(`📍 ${remainingPlayers[playerIndex].name} → Time ${teamWithFewest + 1} (sobra)`);
-            playerIndex++;
-        }
-    }
-}
+
 
 // Ajustes finais para balanceamento
 function finalBalanceAdjustments(teams) {
