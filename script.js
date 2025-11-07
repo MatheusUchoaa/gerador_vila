@@ -1872,17 +1872,17 @@ function distributePlayersSequentially(allPlayers, teams) {
     const numTeams = teams.length;
     
     console.log(`📊 Distribuindo ${totalPlayers} jogadores sequencialmente em ${numTeams} times`);
-    console.log(`🎯 Estratégia: Levantadores igualitariamente primeiro, depois mulheres restantes, por fim homens`);
+    console.log(`🎯 Estratégia: Mulheres igualitariamente primeiro (incluindo levantadoras), depois homens por função`);
     
-    // FASE 1: Distribui TODOS os levantadores igualitariamente (homens e mulheres)
-    const allSetters = allPlayers.filter(p => p.isSetter);
-    const shuffledSetters = [...allSetters].sort(() => Math.random() - 0.5);
-    distributeSettersEqually(shuffledSetters, teams);
+    // FASE 1: Distribui TODAS as mulheres igualitariamente (incluindo levantadoras e atacantes)
+    const allFemales = allPlayers.filter(p => p.gender === 'feminino');
+    const shuffledFemales = [...allFemales].sort(() => Math.random() - 0.5);
+    distributeFemalesEqually(shuffledFemales, teams, maxPlayersPerTeam);
     
-    // FASE 2: Distribui mulheres restantes (que não são levantadoras) igualitariamente
-    const femalesNonSetters = allPlayers.filter(p => p.gender === 'feminino' && !p.isSetter);
-    const shuffledFemalesNonSetters = [...femalesNonSetters].sort(() => Math.random() - 0.5);
-    distributeFemalesEqually(shuffledFemalesNonSetters, teams, maxPlayersPerTeam);
+    // FASE 2: Distribui levantadores homens igualitariamente (balanceando com as mulheres levantadoras)
+    const maleSetters = allPlayers.filter(p => p.isSetter && p.gender === 'masculino');
+    const shuffledMaleSetters = [...maleSetters].sort(() => Math.random() - 0.5);
+    distributeSettersEqually(shuffledMaleSetters, teams);
     
     // FASE 3: Distribui atacantes homens igualitariamente
     const maleAttackers = allPlayers.filter(p => p.isAttacker && p.gender === 'masculino');
@@ -1902,9 +1902,9 @@ function distributePlayersSequentially(allPlayers, teams) {
     console.log('✅ Distribuição sequencial concluída');
 }
 
-// FASE 1: Distribui todos os levantadores (homens e mulheres) de forma igualitária entre todos os times
+// FASE 2: Distribui levantadores homens de forma igualitária, balanceando com as mulheres levantadoras já distribuídas
 function distributeSettersEqually(setters, teams) {
-    console.log(`\n🏐 FASE 1: Distribuindo ${setters.length} levantadores (homens e mulheres) igualitariamente`);
+    console.log(`\n🏐 FASE 2: Distribuindo ${setters.length} levantadores homens para balancear função`);
     
     // Distribui levantadores em ordem circular (round-robin)
     for (let i = 0; i < setters.length; i++) {
@@ -1974,9 +1974,9 @@ function distributeAttackersEqually(attackers, teams, maxPlayersPerTeam) {
     });
 }
 
-// FASE 2: Distribui mulheres restantes (que não são levantadoras) de forma igualitária entre todos os times
+// FASE 1: Distribui todas as mulheres (incluindo levantadoras e atacantes) de forma igualitária entre todos os times
 function distributeFemalesEqually(females, teams, maxPlayersPerTeam) {
-    console.log(`\n👩 FASE 2: Distribuindo ${females.length} mulheres restantes (não levantadoras) igualitariamente`);
+    console.log(`\n👩 FASE 1: Distribuindo ${females.length} mulheres igualitariamente (todas as posições)`);
     
     // Distribui mulheres em ordem circular (round-robin)
     for (let i = 0; i < females.length; i++) {
