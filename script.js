@@ -668,28 +668,31 @@ function updateSimplePlayersList() {
         const playerCard = document.createElement('div');
         playerCard.className = 'col-md-4 col-sm-6';
         
-        const genderIcon = player.gender === 'masculino' ? '👨' : '👩';
         const levelStars = getLevelStars(player.level);
         const badges = [];
         
         if (player.isSetter) badges.push('L');
         if (player.isAttacker) badges.push('A');
         
+        // Define cor do card baseado no gênero (sutil)
+        const cardColor = player.gender === 'feminino' ? '#f8f9fa' : '#ffffff';
+        const borderColor = player.gender === 'feminino' ? '#e9ecef' : '#ddd';
+        
         playerCard.innerHTML = `
-            <div class="card h-100" style="background: white; border: 1px solid #ddd;">
+            <div class="card h-100" style="background: ${cardColor}; border: 1px solid ${borderColor};">
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <span style="font-size: 20px; margin-right: 8px;">${genderIcon}</span>
-                        <strong style="color: #333; font-size: 14px;">${player.name}</strong>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <strong style="color: #333; font-size: 15px;">${player.name}</strong>
+                        <span style="font-size: 13px; color: #666;">${levelStars}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span style="font-size: 12px;">${levelStars}</span>
+                        <small style="color: #888; font-size: 11px;">${player.gender}</small>
                         <div>
                             ${badges.map(badge => `<span class="badge bg-secondary me-1" style="font-size: 10px;">${badge}</span>`).join('')}
                         </div>
                     </div>
-                    <button class="btn btn-sm btn-danger mt-2 w-100" onclick="removeSimplePlayer('${player.id}')" style="font-size: 11px;">
-                        ❌ Remover
+                    <button class="btn btn-sm mt-2 w-100" onclick="removeSimplePlayer('${player.id}')" style="font-size: 11px; background: #6B7280; color: white; border: none;">
+                        ✕ Remover
                     </button>
                 </div>
             </div>
