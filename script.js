@@ -1865,77 +1865,36 @@ function generateTeams(numTeams) {
     showAlert(`${teams.length} times gerados com distribuição sequencial!`, 'success');
 }
 
-// Nova função para distribuir jogadores sequencialmente com distribuição flexível
+// Nova função para distribuir jogadores sequencialmente com distribuição igualitária por nível
 function distributePlayersSequentially(allPlayers, teams) {
     const maxPlayersPerTeam = 6;
     const totalPlayers = allPlayers.length;
     const numTeams = teams.length;
     
-    console.log(`📊 Distribuindo ${totalPlayers} jogadores em ${numTeams} times`);
-    console.log(`🎯 Estratégia: Preenche times com 6 jogadores sequencialmente, restante no último time`);
+    console.log(`📊 Distribuindo ${totalPlayers} jogadores sequencialmente em ${numTeams} times`);
+    console.log(`🎯 Estratégia: Mulheres igualitariamente primeiro (incluindo levantadoras), depois homens por função`);
     
-    // Embaralha todos os jogadores
-    const shuffledPlayers = [...allPlayers].sort(() => Math.random() - 0.5);
+    // FASE 1: Distribui TODAS as mulheres igualitariamente (incluindo levantadoras e atacantes)
+    const allFemales = allPlayers.filter(p => p.gender === 'feminino');
+    const shuffledFemales = [...allFemales].sort(() => Math.random() - 0.5);
+    distributeFemalesEqually(shuffledFemales, teams, maxPlayersPerTeam);
     
-    // Distribui jogadores sequencialmente: 6 por time até o último
-    let playerIndex = 0;
+    // FASE 2: Distribui levantadores homens igualitariamente (balanceando com as mulheres levantadoras)
+    const maleSetters = allPlayers.filter(p => p.isSetter && p.gender === 'masculino');
+    const shuffledMaleSetters = [...maleSetters].sort(() => Math.random() - 0.5);
+    distributeSettersEqually(shuffledMaleSetters, teams);
     
-    for (let teamIndex = 0; teamIndex < numTeams && playerIndex < totalPlayers; teamIndex++) {
-        let targetSize;
-        
-        if (teamIndex < numTeams - 1) {
-            // Para todos os times exceto o último: sempre tenta colocar 6 jogadores
-            const remainingPlayers = totalPlayers - playerIndex;
-            
-            if (remainingPlayers >= maxPlayersPerTeam) {
-                // Se há 6 ou mais jogadores restantes, coloca 6 neste time
-                targetSize = maxPlayersPerTeam;
-            } else {
-                // Se há menos de 6 jogadores restantes, coloca todos neste time
-                targetSize = remainingPlayers;
-            }
-        } else {
-            // Último time: pega todos os jogadores restantes (máximo 6)
-            targetSize = Math.min(maxPlayersPerTeam, totalPlayers - playerIndex);
-        }
-        
-        console.log(`📋 Time ${teamIndex + 1}: planejado ${targetSize} jogadores`);
-        
-        // Preenche o time atual
-        for (let i = 0; i < targetSize && playerIndex < totalPlayers; i++) {
-            teams[teamIndex].push(shuffledPlayers[playerIndex]);
-            playerIndex++;
-        }
-        
-        console.log(`✅ Time ${teamIndex + 1}: ${teams[teamIndex].length} jogadores adicionados`);
-    }
+    // FASE 3: Distribui atacantes homens igualitariamente
+    const maleAttackers = allPlayers.filter(p => p.isAttacker && p.gender === 'masculino');
+    const shuffledMaleAttackers = [...maleAttackers].sort(() => Math.random() - 0.5);
+    distributeAttackersEqually(shuffledMaleAttackers, teams, maxPlayersPerTeam);
     
-    // Se ainda sobraram jogadores, distribui nos times que têm menos jogadores (até o limite de 6)
-    if (playerIndex < totalPlayers) {
-        console.log(`⚠️ Distribuindo ${totalPlayers - playerIndex} jogadores restantes (máximo 6 por time)`);
-        
-        while (playerIndex < totalPlayers) {
-            // Encontra o time com menos jogadores que ainda pode receber mais jogadores
-            const availableTeams = teams.filter(team => team.length < maxPlayersPerTeam);
-            
-            if (availableTeams.length === 0) {
-                console.warn(`❌ Não é possível distribuir mais jogadores - todos os times estão com 6 jogadores`);
-                console.warn(`⚠️ ${totalPlayers - playerIndex} jogador(es) não puderam ser distribuídos`);
-                break;
-            }
-            
-            // Ordena por quantidade de jogadores (menor primeiro)
-            availableTeams.sort((a, b) => a.length - b.length);
-            const teamToReceive = availableTeams[0];
-            
-            // Encontra o índice do time no array original
-            const teamIndex = teams.findIndex(team => team === teamToReceive);
-            
-            teams[teamIndex].push(shuffledPlayers[playerIndex]);
-            console.log(`📍 Jogador ${shuffledPlayers[playerIndex].name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador)`);
-            playerIndex++;
-        }
-    }
+    // FASE 4: Preenche os times com homens restantes, respeitando distribuição 6-6-6-resto
+    const maleNonSpecific = allPlayers.filter(p => 
+        p.gender === 'masculino' && !p.isSetter && !p.isAttacker
+    );
+    const shuffledMaleNonSpecific = [...maleNonSpecific].sort(() => Math.random() - 0.5);
+    fillTeamsSequentiallyWithMalesBalanced(shuffledMaleNonSpecific, teams, maxPlayersPerTeam);
     
     // Log final da distribuição
     logFinalDistribution(teams);
@@ -2054,47 +2013,90 @@ function distributeFemalesEqually(females, teams, maxPlayersPerTeam) {
     });
 }
 
-// FASE 4: Preenche os times sequencialmente com os homens restantes (sem função específica)
-function fillTeamsSequentiallyWithMales(maleNonSetters, teams, maxPlayersPerTeam) {
-    console.log(`\n👨 FASE 4: Preenchendo sequencialmente com ${maleNonSetters.length} homens sem função específica`);
+// FASE 4: Preenche os times com homens restantes, respeitando distribuição 6-6-6-resto
+function fillTeamsSequentiallyWithMalesBalanced(maleNonSetters, teams, maxPlayersPerTeam) {
+    console.log(`\n👨 FASE 4: Preenchendo com ${maleNonSetters.length} homens restantes (distribuição balanceada)`);
     
-    let currentTeamIndex = 0;
+    // Primeiro, distribui igualmente entre todos os times até completar 6 ou esgotar jogadores
+    let playerIndex = 0;
+    let round = 0;
     
-    for (let i = 0; i < maleNonSetters.length; i++) {
-        const player = maleNonSetters[i];
+    // Distribui em rodadas circulares até que alguém atinja 6 jogadores ou acabem os jogadores
+    while (playerIndex < maleNonSetters.length) {
+        let playersAddedThisRound = 0;
         
-        // Verifica se o jogador já não está em nenhum time
-        const isAlreadyInTeam = teams.some(team => team.some(p => p.id === player.id));
-        if (isAlreadyInTeam) {
-            console.log(`⚠️ Jogador ${player.name} já foi alocado - pulando...`);
-            continue;
+        for (let teamIndex = 0; teamIndex < teams.length && playerIndex < maleNonSetters.length; teamIndex++) {
+            const player = maleNonSetters[playerIndex];
+            
+            // Verifica se o jogador já não está em nenhum time
+            const isAlreadyInTeam = teams.some(team => team.some(p => p.id === player.id));
+            if (isAlreadyInTeam) {
+                console.log(`⚠️ Jogador ${player.name} já foi alocado - pulando...`);
+                playerIndex++;
+                continue;
+            }
+            
+            // Adiciona ao time se houver espaço
+            if (teams[teamIndex].length < maxPlayersPerTeam) {
+                teams[teamIndex].push(player);
+                console.log(`📍 ${player.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador) [Rodada ${round + 1}]`);
+                playerIndex++;
+                playersAddedThisRound++;
+            }
         }
         
-        // Procura o próximo time que ainda tem espaço
-        while (currentTeamIndex < teams.length && teams[currentTeamIndex].length >= maxPlayersPerTeam) {
-            currentTeamIndex++;
-        }
-        
-        // Se todos os times principais estão cheios, distribui nas sobras
-        if (currentTeamIndex >= teams.length) {
-            console.log(`⚠️ Todos os times principais estão cheios. Distribuindo sobras...`);
-            distributeRemainingPlayersInOrder(maleNonSetters.slice(i), teams);
+        // Se nenhum jogador foi adicionado nesta rodada, para o loop
+        if (playersAddedThisRound === 0) {
+            console.log(`⚠️ Nenhum jogador foi adicionado na rodada ${round + 1} - parando distribuição circular`);
             break;
         }
         
-        // Adiciona o jogador ao time atual
-        teams[currentTeamIndex].push(player);
+        round++;
+    }
+    
+    // Se ainda sobraram jogadores, aplica a regra 6-6-6-resto
+    if (playerIndex < maleNonSetters.length) {
+        console.log(`\n🎯 Aplicando regra 6-6-6-resto para ${maleNonSetters.length - playerIndex} jogadores restantes`);
         
-        const teamNumber = currentTeamIndex + 1;
-        const positionInTeam = teams[currentTeamIndex].length;
+        // Preenche times sequencialmente até 6, deixando o resto no último
+        for (let teamIndex = 0; teamIndex < teams.length && playerIndex < maleNonSetters.length; teamIndex++) {
+            
+            if (teamIndex < teams.length - 1) {
+                // Times intermediários: preenche até 6
+                while (teams[teamIndex].length < maxPlayersPerTeam && playerIndex < maleNonSetters.length) {
+                    const player = maleNonSetters[playerIndex];
+                    
+                    // Verifica se já não está alocado
+                    const isAlreadyInTeam = teams.some(team => team.some(p => p.id === player.id));
+                    if (!isAlreadyInTeam) {
+                        teams[teamIndex].push(player);
+                        console.log(`📍 ${player.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador) [Preenchimento sequencial]`);
+                    }
+                    playerIndex++;
+                }
+            } else {
+                // Último time: pega todos os restantes (até 6)
+                while (playerIndex < maleNonSetters.length && teams[teamIndex].length < maxPlayersPerTeam) {
+                    const player = maleNonSetters[playerIndex];
+                    
+                    // Verifica se já não está alocado
+                    const isAlreadyInTeam = teams.some(team => team.some(p => p.id === player.id));
+                    if (!isAlreadyInTeam) {
+                        teams[teamIndex].push(player);
+                        console.log(`📍 ${player.name} → Time ${teamIndex + 1} (${teams[teamIndex].length}° jogador) [Último time - resto]`);
+                    }
+                    playerIndex++;
+                }
+            }
+        }
         
-        console.log(`📍 ${player.name} → Time ${teamNumber} (${positionInTeam}° jogador)`);
-        
-        // Se o time atual ficou cheio, passa para o próximo na próxima iteração
-        if (teams[currentTeamIndex].length >= maxPlayersPerTeam) {
-            console.log(`✅ Time ${teamNumber} completo com ${teams[currentTeamIndex].length} jogadores`);
+        // Se ainda sobraram jogadores, avisa que não puderam ser distribuídos
+        if (playerIndex < maleNonSetters.length) {
+            console.warn(`⚠️ ${maleNonSetters.length - playerIndex} jogadores não puderam ser distribuídos (limite de 6 por time atingido)`);
         }
     }
+    
+    console.log(`✅ Fase 4 concluída - ${playerIndex} de ${maleNonSetters.length} jogadores processados`);
 }
 
 // Função para mostrar distribuição final
