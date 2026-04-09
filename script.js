@@ -1,5 +1,5 @@
 /* ========================================
-   Gerador de Times da Vila v3.0
+   Gerador de Times da Vila v4.0
    Script otimizado para performance
    ======================================== */
 
@@ -21,6 +21,7 @@ const el = {
   generateBtn: null, regenerateBtn: null, clearBtn: null, countEl: null,
   savedList: null, submitBtn: null, cancelEditBtn: null, toggleSavedBtn: null,
   reloadFirebaseBtn: null, searchInput: null, clearSearchBtn: null,
+  guestCheckbox: null, invitedByGroup: null, invitedByInput: null,
 };
 
 function cacheDom() {
@@ -40,6 +41,9 @@ function cacheDom() {
   el.reloadFirebaseBtn = $('reload-firebase-players');
   el.searchInput = $('player-search');
   el.clearSearchBtn = $('clear-search');
+  el.guestCheckbox = $('player-guest');
+  el.invitedByGroup = $('guest-invited-by-group');
+  el.invitedByInput = $('player-invited-by');
 }
 
 // --- Utility ---
@@ -104,9 +108,14 @@ function setupEvents() {
   el.searchInput?.addEventListener('input', debounce(handleSearch, 150));
   el.searchInput?.addEventListener('keydown', handleSearchKey);
   el.clearSearchBtn?.addEventListener('click', clearSearch);
+  // Guest toggle
+  el.guestCheckbox?.addEventListener('change', () => {
+    el.invitedByGroup.style.display = el.guestCheckbox.checked ? '' : 'none';
+    if (!el.guestCheckbox.checked) el.invitedByInput.value = '';
+  });
 }
 
-// --- Render: Player List ---
+// --- Render: Player List (grid 3 cols) ---
 function renderPlayerList() {
   const frag = document.createDocumentFragment();
   el.countEl.textContent = players.length;
@@ -119,23 +128,48 @@ function renderPlayerList() {
     return;
   }
 
-  const sorted = [...players].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
-  sorted.forEach(p => frag.appendChild(createPlayerItem(p)));
+  // Separate members and guests
+  const members = players.filter(p => !p.isGuest);
+  const guests = players.filter(p => p.isGuest);
+  const sorted = [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
+  const sortedGuests = [...guests].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
+
+  // Members section
+  if (sorted.length) {
+    const label = document.createElement('div');
+    label.className = 'grid-section-label';
+    label.innerHTML = `<span>👥 Do Grupo</span><span class="grid-section-count">${sorted.length}</span>`;
+    frag.appendChild(label);
+    sorted.forEach(p => frag.appendChild(createPlayerItem(p)));
+  }
+
+  // Guests section
+  if (sortedGuests.length) {
+    const label = document.createElement('div');
+    label.className = 'grid-section-label guest-label';
+    label.innerHTML = `<span>🎫 Convidados</span><span class="grid-section-count">${sortedGuests.length}</span>`;
+    frag.appendChild(label);
+    sortedGuests.forEach(p => frag.appendChild(createPlayerItem(p)));
+  }
+
   el.list.innerHTML = '';
   el.list.appendChild(frag);
   renderSimplePlayers();
 }
 
 function createPlayerItem(p) {
-  const li = document.createElement('li');
-  li.className = 'player-item';
-  li.dataset.id = p.id;
+  const div = document.createElement('div');
+  div.className = 'player-item' + (p.isGuest ? ' is-guest' : '');
+  div.dataset.id = p.id;
 
   const badges = [];
   if (p.isSetter) badges.push('<span class="pos-badge setter">L</span>');
   if (p.isAttacker) badges.push('<span class="pos-badge attacker">A</span>');
+  if (p.isGuest) badges.push('<span class="pos-badge guest-badge">C</span>');
 
-  li.innerHTML = `
+  const guestInfo = p.isGuest && p.invitedBy ? `<span class="guest-indicator">por ${p.invitedBy}</span>` : '';
+
+  div.innerHTML = `
     <div class="player-avatar ${p.gender || 'masculino'}">${(p.gender === 'feminino') ? 'F' : 'M'}</div>
     <div class="player-info">
       <span class="player-name">${p.name}</span>
@@ -143,13 +177,14 @@ function createPlayerItem(p) {
         <span class="level-stars">${LEVEL_STARS[p.level] || '⭐'}</span>
         ${badges.join('')}
       </div>
+      ${guestInfo}
     </div>
     <button class="player-remove" data-id="${p.id}" title="Remover">×</button>
   `;
 
-  li.addEventListener('click', e => { if (!e.target.closest('.player-remove')) editPlayer(p.id); });
-  li.querySelector('.player-remove').addEventListener('click', e => { e.stopPropagation(); removePlayer(p.id); });
-  return li;
+  div.addEventListener('click', e => { if (!e.target.closest('.player-remove')) editPlayer(p.id); });
+  div.querySelector('.player-remove').addEventListener('click', e => { e.stopPropagation(); removePlayer(p.id); });
+  return div;
 }
 
 function renderSimplePlayers() {
@@ -213,23 +248,25 @@ async function handleAddPlayer(e) {
   const gender = document.querySelector('input[name="player-gender"]:checked')?.value;
   const isSetter = document.getElementById('player-setter').checked;
   const isAttacker = document.getElementById('player-attacker').checked;
+  const isGuest = el.guestCheckbox.checked;
+  const invitedBy = el.invitedByInput.value.trim();
   const pid = el.idInput.value;
   if (!name || !level || !gender) { showAlert('Preencha todos os campos!', 'error'); return; }
   if (pid && pid.startsWith('saved_')) {
-    await updateSavedPlayerInFirebase(pid.replace('saved_', ''), name, level, gender, isSetter, isAttacker);
+    await updateSavedPlayerInFirebase(pid.replace('saved_', ''), name, level, gender, isSetter, isAttacker, isGuest, invitedBy);
   } else if (pid) {
-    await updatePlayer(pid, name, level, gender, isSetter, isAttacker);
+    await updatePlayer(pid, name, level, gender, isSetter, isAttacker, isGuest, invitedBy);
   } else {
-    await addPlayer(name, level, gender, isSetter, isAttacker);
+    await addPlayer(name, level, gender, isSetter, isAttacker, isGuest, invitedBy);
   }
   resetForm();
 }
 
-async function addPlayer(name, level, gender, isSetter, isAttacker) {
+async function addPlayer(name, level, gender, isSetter, isAttacker, isGuest = false, invitedBy = '') {
   if (players.find(p => p.name.toLowerCase() === name.toLowerCase() && p.gender === gender)) {
     showAlert(`${name} já está na lista!`, 'warning'); return;
   }
-  const np = { id: Date.now().toString(), name, level, gender, isSetter, isAttacker, createdAt: new Date().toISOString() };
+  const np = { id: Date.now().toString(), name, level, gender, isSetter, isAttacker, isGuest, invitedBy, createdAt: new Date().toISOString() };
   players.push(np);
   savePlayers();
   renderPlayerList();
@@ -245,11 +282,11 @@ async function addPlayer(name, level, gender, isSetter, isAttacker) {
   } else { await saveDirectFirebase(name, level, gender, isSetter, isAttacker, np.id); }
 }
 
-async function updatePlayer(id, name, level, gender, isSetter, isAttacker) {
+async function updatePlayer(id, name, level, gender, isSetter, isAttacker, isGuest = false, invitedBy = '') {
   const idx = players.findIndex(p => p.id === id);
   if (idx === -1) return;
   const old = players[idx];
-  players[idx] = { ...old, name, level, gender, isSetter, isAttacker };
+  players[idx] = { ...old, name, level, gender, isSetter, isAttacker, isGuest, invitedBy };
   savePlayers(); renderPlayerList();
   showAlert(`${name} atualizado!`, 'success');
   if (apiConnected && old.firebase_id) await PlayersAPI.updatePlayer(old.firebase_id, { name, level, gender, isSetter, isAttacker });
@@ -275,6 +312,9 @@ function editPlayer(id) {
   selectRadio('player-gender', p.gender);
   document.getElementById('player-setter').checked = p.isSetter;
   document.getElementById('player-attacker').checked = p.isAttacker;
+  el.guestCheckbox.checked = !!p.isGuest;
+  el.invitedByInput.value = p.invitedBy || '';
+  el.invitedByGroup.style.display = p.isGuest ? '' : 'none';
   el.submitBtn.innerHTML = '<i class="bi bi-check-lg"></i> Salvar';
   el.cancelEditBtn.style.display = '';
   el.nameInput.focus();
@@ -290,6 +330,7 @@ function resetForm() {
   el.idInput.value = '';
   el.submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Adicionar';
   el.cancelEditBtn.style.display = 'none';
+  el.invitedByGroup.style.display = 'none';
   resetFirebaseEditMode();
   el.nameInput.focus();
 }
@@ -320,7 +361,7 @@ function addPlayerFromSaved(pid) {
   if (!p) return;
   const exists = players.some(x => (x.firebase_id && p.firebase_id && x.firebase_id === p.firebase_id) || (x.name.toLowerCase() === p.name.toLowerCase() && x.gender === p.gender));
   if (exists) { showAlert(`${p.name} já está na lista!`, 'warning'); return; }
-  players.push({ id: p.firebase_id || Date.now().toString(), name: p.name, level: p.level, gender: p.gender, isSetter: p.isSetter, isAttacker: p.isAttacker, firebase_id: p.firebase_id, createdAt: p.createdAt || new Date().toISOString() });
+  players.push({ id: p.firebase_id || Date.now().toString(), name: p.name, level: p.level, gender: p.gender, isSetter: p.isSetter, isAttacker: p.isAttacker, isGuest: false, invitedBy: '', firebase_id: p.firebase_id, createdAt: p.createdAt || new Date().toISOString() });
   savePlayers(); renderPlayerList();
   showAlert(`${p.name} adicionado!`, 'success');
 }
@@ -334,6 +375,8 @@ async function editSavedPlayer(pid) {
   selectRadio('player-gender', p.gender);
   document.getElementById('player-setter').checked = !!p.isSetter;
   document.getElementById('player-attacker').checked = !!p.isAttacker;
+  el.guestCheckbox.checked = false;
+  el.invitedByGroup.style.display = 'none';
   el.submitBtn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Atualizar';
   el.cancelEditBtn.style.display = '';
   const sec = el.form.closest('.card-section') || el.form.closest('section');
@@ -363,7 +406,7 @@ async function removeSavedPlayer(pid) {
   showAlert(`${p.name} excluído!`, 'success');
 }
 
-async function updateSavedPlayerInFirebase(pid, name, level, gender, isSetter, isAttacker) {
+async function updateSavedPlayerInFirebase(pid, name, level, gender, isSetter, isAttacker, isGuest, invitedBy) {
   const si = savedPlayers.findIndex(p => p.id === pid);
   if (si === -1) return;
   const sp = savedPlayers[si];
@@ -490,18 +533,31 @@ function handleSearch() {
 
   if (!term) {
     el.list.querySelectorAll('.player-item').forEach(e => e.style.display = '');
+    el.list.querySelectorAll('.grid-section-label').forEach(e => e.style.display = '');
     el.savedList.querySelectorAll('.saved-player').forEach(e => e.style.display = '');
     return;
   }
 
-  const match = p => p.name.toLowerCase().includes(term) || p.level.includes(term) || p.gender.includes(term) || (p.isSetter && 'levantador'.includes(term)) || (p.isAttacker && 'atacante'.includes(term));
+  const match = p => p.name.toLowerCase().includes(term) || p.level.includes(term) || p.gender.includes(term) || (p.isSetter && 'levantador'.includes(term)) || (p.isAttacker && 'atacante'.includes(term)) || (p.isGuest && 'convidado'.includes(term)) || (p.invitedBy && p.invitedBy.toLowerCase().includes(term));
   let curCount = 0, savedCount = 0;
 
-  el.list.querySelectorAll('.player-item').forEach(li => {
-    const p = players.find(x => x.id === li.dataset.id);
+  el.list.querySelectorAll('.player-item').forEach(div => {
+    const p = players.find(x => x.id === div.dataset.id);
     const show = p && match(p);
-    li.style.display = show ? '' : 'none';
+    div.style.display = show ? '' : 'none';
     if (show) curCount++;
+  });
+
+  // Hide section labels if no results in that section
+  el.list.querySelectorAll('.grid-section-label').forEach(label => {
+    const next = [];
+    let sib = label.nextElementSibling;
+    while (sib && !sib.classList.contains('grid-section-label')) {
+      if (sib.classList.contains('player-item')) next.push(sib);
+      sib = sib.nextElementSibling;
+    }
+    const anyVisible = next.some(n => n.style.display !== 'none');
+    label.style.display = anyVisible ? '' : 'none';
   });
 
   el.savedList.querySelectorAll('.saved-player').forEach(d => {
@@ -531,6 +587,7 @@ function clearSearch() {
   el.clearSearchBtn?.classList.remove('show');
   document.querySelectorAll('.search-results-info, .search-empty-state').forEach(e => e.remove());
   el.list.querySelectorAll('.player-item').forEach(e => e.style.display = '');
+  el.list.querySelectorAll('.grid-section-label').forEach(e => e.style.display = '');
   el.savedList.querySelectorAll('.saved-player').forEach(e => e.style.display = '');
 }
 
@@ -597,7 +654,6 @@ function distributeSequential(all, teams) {
   const max = Math.max(6, Math.ceil(all.length / n));
   const placed = new Set();
 
-  // Tag each player with roles for sorting
   const tagged = all.map(p => ({
     ...p,
     score: LEVEL_MAP[p.level] || 1,
@@ -610,45 +666,30 @@ function distributeSequential(all, teams) {
     if (!p.roles.length) p.roles.push('general');
   });
 
-  // --- PHASE 1: Setters (most scarce resource, highest priority) ---
   const setters = shuffle(tagged.filter(p => p.isSetter));
   serpentineDistribute(setters, teams, placed, max, 'setter');
 
-  // --- PHASE 2: Attackers ---
   const attackers = shuffle(tagged.filter(p => p.isAttacker && !placed.has(p.id)));
   serpentineDistribute(attackers, teams, placed, max, 'attacker');
 
-  // --- PHASE 3: Females (not yet placed as setter/attacker) ---
   const females = shuffle(tagged.filter(p => p.gender === 'feminino' && !placed.has(p.id)));
   serpentineDistribute(females, teams, placed, max, 'female');
 
-  // --- PHASE 4: Remaining players — score-balanced distribution ---
   const remaining = shuffle(tagged.filter(p => !placed.has(p.id)));
-  // Sort by score descending so we place strongest first (easier to balance)
   remaining.sort((a, b) => b.score - a.score);
   scoreBalancedDistribute(remaining, teams, placed, max);
 
-  // --- PHASE 5: Final swap optimization ---
-  optimizeTeamBalance(teams, 3); // 3 rounds of optimization
+  optimizeTeamBalance(teams, 3);
 }
 
-/**
- * Serpentine distribution: distributes players ensuring the count of a role
- * is as equal as possible across teams. Teams with fewest of that role get next.
- */
 function serpentineDistribute(players, teams, placed, max, role) {
   if (!players.length) return;
-
-  // Sort by skill descending, then shuffle within same level for randomness
   players.sort((a, b) => b.score - a.score || Math.random() - .5);
-
   for (const p of players) {
     if (placed.has(p.id)) continue;
-    // Find the team that has the fewest of this role AND fewest total players AND lowest score
     const target = pickBestTeam(teams, placed, max, (team) => {
       const roleCount = countRole(team, role);
       const totalScore = teamScore(team);
-      // Primary: fewest of this role; Secondary: fewest players; Tertiary: lowest score
       return roleCount * 10000 + team.length * 100 + totalScore;
     });
     if (target !== -1) {
@@ -658,16 +699,11 @@ function serpentineDistribute(players, teams, placed, max, role) {
   }
 }
 
-/**
- * Score-balanced distribution for general players.
- * Always places the next player in the team with the LOWEST total score.
- */
 function scoreBalancedDistribute(players, teams, placed, max) {
   for (const p of players) {
     if (placed.has(p.id)) continue;
     const target = pickBestTeam(teams, placed, max, (team) => {
       const score = teamScore(team);
-      // Primary: lowest score; Secondary: fewest players
       return score * 100 + team.length;
     });
     if (target !== -1) {
@@ -677,26 +713,17 @@ function scoreBalancedDistribute(players, teams, placed, max) {
   }
 }
 
-/**
- * Pick the best team using a scoring function (lowest score wins).
- * Only considers teams that aren't full.
- */
 function pickBestTeam(teams, placed, max, scoreFn) {
   let bestIdx = -1, bestScore = Infinity;
   for (let i = 0; i < teams.length; i++) {
     if (teams[i].length >= max) continue;
     const s = scoreFn(teams[i]);
-    // Add small random tiebreaker to avoid bias toward lower indices
     const sRand = s + Math.random() * 0.1;
     if (sRand < bestScore) { bestScore = sRand; bestIdx = i; }
   }
   return bestIdx;
 }
 
-/**
- * Post-distribution optimization: tries swapping players between teams
- * to reduce imbalance in score, female count, setter count, and attacker count.
- */
 function optimizeTeamBalance(teams, rounds) {
   for (let r = 0; r < rounds; r++) {
     let improved = false;
@@ -705,32 +732,21 @@ function optimizeTeamBalance(teams, rounds) {
         improved = trySwapImprove(teams, i, j) || improved;
       }
     }
-    if (!improved) break; // Converged
+    if (!improved) break;
   }
 }
 
-/**
- * Try swapping each pair of players between two teams.
- * Accept the swap if it reduces the global imbalance.
- */
 function trySwapImprove(teams, ti, tj) {
   const before = globalImbalance(teams);
   let bestSwap = null, bestImb = before;
-
   for (let a = 0; a < teams[ti].length; a++) {
     for (let b = 0; b < teams[tj].length; b++) {
-      // Swap
       [teams[ti][a], teams[tj][b]] = [teams[tj][b], teams[ti][a]];
       const after = globalImbalance(teams);
-      if (after < bestImb - 0.5) { // Only accept meaningful improvements
-        bestImb = after;
-        bestSwap = [a, b];
-      }
-      // Swap back
+      if (after < bestImb - 0.5) { bestImb = after; bestSwap = [a, b]; }
       [teams[ti][a], teams[tj][b]] = [teams[tj][b], teams[ti][a]];
     }
   }
-
   if (bestSwap) {
     [teams[ti][bestSwap[0]], teams[tj][bestSwap[1]]] = [teams[tj][bestSwap[1]], teams[ti][bestSwap[0]]];
     return true;
@@ -738,27 +754,20 @@ function trySwapImprove(teams, ti, tj) {
   return false;
 }
 
-/**
- * Calculate a global imbalance metric across all teams.
- * Lower = more balanced. Considers: score, females, setters, attackers.
- */
 function globalImbalance(teams) {
   const n = teams.length;
   if (n < 2) return 0;
-
   const scores = teams.map(t => teamScore(t));
   const females = teams.map(t => t.filter(p => p.gender === 'feminino').length);
   const setters = teams.map(t => t.filter(p => p.isSetter).length);
   const attackers = teams.map(t => t.filter(p => p.isAttacker).length);
   const sizes = teams.map(t => t.length);
-
-  // Weighted variance
   return (
-    variance(scores) * 3 +     // Skill balance is most important
-    variance(females) * 8 +     // Female distribution very important
-    variance(setters) * 10 +    // Setter distribution critical
-    variance(attackers) * 8 +   // Attacker distribution very important
-    variance(sizes) * 5         // Even team sizes important
+    variance(scores) * 3 +
+    variance(females) * 8 +
+    variance(setters) * 10 +
+    variance(attackers) * 8 +
+    variance(sizes) * 5
   );
 }
 
@@ -792,10 +801,6 @@ function shuffle(arr) {
 
 // --- Balance Indicator System ---
 
-/**
- * Calculates per-team stats and compares against averages.
- * Updates chip colors and the overall balance banner.
- */
 function updateBalanceIndicators() {
   if (!currentTeams || currentTeams.length < 2) return;
 
@@ -816,7 +821,6 @@ function updateBalanceIndicators() {
     size: stats.reduce((s, t) => s + t.size, 0) / n
   };
 
-  // Thresholds: how far from average before warning/danger
   const thresholds = {
     score: { warn: avg.score * 0.2, danger: avg.score * 0.35 },
     females: { warn: 1, danger: 2 },
@@ -829,10 +833,8 @@ function updateBalanceIndicators() {
   currentTeams.forEach((team, i) => {
     const card = document.querySelector(`.team-card[data-team-index="${i}"]`);
     if (!card) return;
-
     const s = stats[i];
 
-    // Build meta chips with balance status
     let meta = card.querySelector('.team-card-meta');
     if (!meta) {
       meta = document.createElement('div');
@@ -853,7 +855,6 @@ function updateBalanceIndicators() {
       <span class="team-stat-chip ${attackerStatus.cls}" title="${attackerStatus.tip}">${s.attackers}A</span>
     `;
 
-    // Balance bar
     let bar = card.querySelector('.team-balance-bar');
     if (!bar) {
       bar = document.createElement('div');
@@ -873,14 +874,12 @@ function updateBalanceIndicators() {
     fill.style.width = balancePercent + '%';
     fill.className = 'fill ' + (balancePercent >= 75 ? 'good' : balancePercent >= 50 ? 'ok' : 'bad');
 
-    // Count for overall
     const statuses = [scoreStatus, femaleStatus, setterStatus, attackerStatus];
     overallTotal += statuses.length;
     overallBad += statuses.filter(s => s.cls === 'danger').length;
     overallBad += statuses.filter(s => s.cls === 'warning').length * 0.5;
   });
 
-  // Overall balance banner
   updateBalanceBanner(overallBad, overallTotal);
 }
 
@@ -902,9 +901,7 @@ function updateBalanceBanner(bad, total) {
     if (hint) hint.after(banner);
     else el.teamOutput.prepend(banner);
   }
-
   const ratio = total > 0 ? bad / total : 0;
-
   if (ratio <= 0.1) {
     banner.className = 'balance-banner good';
     banner.innerHTML = '<i class="bi bi-check-circle-fill"></i> Times bem equilibrados!';
@@ -936,7 +933,6 @@ function displayTeams(teams) {
     header.className = 'team-card-header';
     header.innerHTML = `<span>🏐 Time ${i + 1}</span><span class="team-size">${team.length} jogadores</span>`;
 
-    // Stats row
     const meta = document.createElement('div');
     meta.className = 'team-card-meta';
     const sc = teamScore(team);
@@ -962,7 +958,7 @@ function displayTeams(teams) {
     card.appendChild(body);
     frag.appendChild(card);
 
-    // Drop zone events
+    // Drop zone events (desktop only)
     card.addEventListener('dragover', onDragOver);
     card.addEventListener('dragenter', onDragEnter);
     card.addEventListener('dragleave', onDragLeave);
@@ -978,13 +974,66 @@ function displayTeams(teams) {
   summary.textContent = `${teams.length} times · ${totalP} jogadores · ${totalS} levantadores · ${totalA} atacantes`;
   frag.appendChild(summary);
 
+  // Share buttons
+  const shareDiv = document.createElement('div');
+  shareDiv.className = 'share-actions';
+  shareDiv.innerHTML = `
+    <button class="btn-share whatsapp" id="share-whatsapp"><i class="bi bi-whatsapp"></i> WhatsApp</button>
+    <button class="btn-share copy" id="share-copy"><i class="bi bi-clipboard"></i> Copiar</button>
+  `;
+  frag.appendChild(shareDiv);
+
   el.teamOutput.appendChild(frag);
 
-  // Calculate and show balance indicators
+  // Share events
+  document.getElementById('share-whatsapp').addEventListener('click', shareWhatsApp);
+  document.getElementById('share-copy').addEventListener('click', shareCopyText);
+
   updateBalanceIndicators();
 
   // Touch support
   initTouchDrag();
+}
+
+// --- Share ---
+function buildShareText() {
+  if (!currentTeams) return '';
+  let text = '🏐 *Times Sorteados — Vôlei Villa*\n\n';
+  currentTeams.forEach((team, i) => {
+    text += `*Time ${i + 1}* (${team.length} jogadores)\n`;
+    team.forEach((p, j) => {
+      let tags = '';
+      if (p.isSetter) tags += ' [L]';
+      if (p.isAttacker) tags += ' [A]';
+      text += `${j + 1}. ${p.name}${tags}\n`;
+    });
+    text += '\n';
+  });
+  const totalP = currentTeams.reduce((s, t) => s + t.length, 0);
+  text += `📊 ${currentTeams.length} times · ${totalP} jogadores`;
+  return text;
+}
+
+function shareWhatsApp() {
+  const text = buildShareText();
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+
+function shareCopyText() {
+  const text = buildShareText();
+  navigator.clipboard.writeText(text).then(() => {
+    showAlert('Copiado para a área de transferência!', 'success');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    showAlert('Copiado!', 'success');
+  });
 }
 
 function createTeamPlayerRow(p, idx, teamIdx) {
@@ -1010,7 +1059,7 @@ function createTeamPlayerRow(p, idx, teamIdx) {
   return row;
 }
 
-// --- Drag & Drop Logic ---
+// --- Drag & Drop Logic (Desktop) ---
 let dragState = { playerId: null, fromTeam: null, element: null };
 
 function onDragStart(e) {
@@ -1023,7 +1072,6 @@ function onDragStart(e) {
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', row.dataset.playerId);
 
-  // Custom drag image
   const ghost = document.createElement('div');
   ghost.className = 'drag-ghost';
   ghost.textContent = row.querySelector('.name').textContent;
@@ -1079,20 +1127,17 @@ function onDrop(e) {
   card.querySelectorAll('.drop-placeholder').forEach(p => p.remove());
 
   if (toTeam === dragState.fromTeam || dragState.playerId === null) return;
-
   movePlayerBetweenTeams(dragState.playerId, dragState.fromTeam, toTeam);
 }
 
 function movePlayerBetweenTeams(playerId, fromIdx, toIdx) {
   if (!currentTeams || !currentTeams[fromIdx] || !currentTeams[toIdx]) return;
-
   const pIdx = currentTeams[fromIdx].findIndex(p => p.id === playerId);
   if (pIdx === -1) return;
 
   const [player] = currentTeams[fromIdx].splice(pIdx, 1);
   currentTeams[toIdx].push(player);
 
-  // Re-render only the affected teams
   refreshTeamCard(fromIdx);
   refreshTeamCard(toIdx);
   refreshTeamSummary();
@@ -1108,7 +1153,6 @@ function refreshTeamCard(teamIdx) {
   const header = card.querySelector('.team-card-header');
   header.innerHTML = `<span>🏐 Time ${teamIdx + 1}</span><span class="team-size">${team.length} jogadores</span>`;
 
-  // Meta will be rebuilt by updateBalanceIndicators
   const body = card.querySelector('.team-card-body');
   body.innerHTML = '';
   team.forEach((p, j) => {
@@ -1128,8 +1172,8 @@ function refreshTeamSummary() {
   updateBalanceIndicators();
 }
 
-// --- Touch Drag Support (mobile) ---
-let touchDrag = { active: false, playerId: null, fromTeam: null, ghost: null, startY: 0 };
+// --- Touch Drag Support (mobile) - FIXED ---
+let touchDrag = { active: false, playerId: null, fromTeam: null, ghost: null, row: null, longPress: null, startX: 0, startY: 0 };
 
 function initTouchDrag() {
   document.querySelectorAll('.team-card').forEach(card => initTouchDragForCard(card));
@@ -1137,9 +1181,19 @@ function initTouchDrag() {
 
 function initTouchDragForCard(card) {
   card.querySelectorAll('.team-player-row').forEach(row => {
-    row.addEventListener('touchstart', onTouchStart, { passive: false });
-    row.addEventListener('touchmove', onTouchMove, { passive: false });
-    row.addEventListener('touchend', onTouchEnd);
+    // Remove old listeners by cloning
+    const newRow = row.cloneNode(true);
+    row.parentNode.replaceChild(newRow, row);
+
+    // Re-add desktop drag listeners
+    newRow.addEventListener('dragstart', onDragStart);
+    newRow.addEventListener('dragend', onDragEnd);
+
+    // Touch listeners
+    newRow.addEventListener('touchstart', onTouchStart, { passive: true });
+    newRow.addEventListener('touchmove', onTouchMove, { passive: false });
+    newRow.addEventListener('touchend', onTouchEnd);
+    newRow.addEventListener('touchcancel', onTouchCancel);
   });
 }
 
@@ -1149,32 +1203,41 @@ function onTouchStart(e) {
   touchDrag.startY = e.touches[0].clientY;
   touchDrag.playerId = row.dataset.playerId;
   touchDrag.fromTeam = parseInt(row.dataset.teamIndex);
-  touchDrag.moved = false;
   touchDrag.row = row;
+  touchDrag.active = false;
+
   touchDrag.longPress = setTimeout(() => {
     touchDrag.active = true;
     row.classList.add('dragging');
+
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost';
     ghost.textContent = row.querySelector('.name').textContent;
-    ghost.style.left = e.touches[0].clientX + 'px';
-    ghost.style.top = e.touches[0].clientY + 'px';
+    ghost.style.left = touchDrag.startX + 'px';
+    ghost.style.top = touchDrag.startY + 'px';
     document.body.appendChild(ghost);
     touchDrag.ghost = ghost;
+
     navigator.vibrate?.(30);
-  }, 300);
+  }, 400);
 }
 
 function onTouchMove(e) {
+  if (!touchDrag.longPress && !touchDrag.active) return;
+
   const dx = Math.abs(e.touches[0].clientX - touchDrag.startX);
   const dy = Math.abs(e.touches[0].clientY - touchDrag.startY);
 
-  if (!touchDrag.active && (dx > 10 || dy > 10)) {
+  // If user scrolls before long press fires, cancel
+  if (!touchDrag.active && (dx > 8 || dy > 8)) {
     clearTimeout(touchDrag.longPress);
+    touchDrag.longPress = null;
     return;
   }
 
   if (!touchDrag.active) return;
+
+  // Prevent scroll while dragging
   e.preventDefault();
 
   if (touchDrag.ghost) {
@@ -1205,13 +1268,16 @@ function onTouchMove(e) {
 
 function onTouchEnd(e) {
   clearTimeout(touchDrag.longPress);
+  touchDrag.longPress = null;
 
   if (touchDrag.active) {
+    // Clean up visual state
     touchDrag.ghost?.remove();
     touchDrag.row?.classList.remove('dragging');
     document.querySelectorAll('.team-card.drag-over').forEach(c => c.classList.remove('drag-over'));
     document.querySelectorAll('.drop-placeholder').forEach(p => p.remove());
 
+    // Find drop target
     const touch = e.changedTouches[0];
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     const targetCard = target?.closest('.team-card');
@@ -1224,7 +1290,17 @@ function onTouchEnd(e) {
     }
   }
 
-  touchDrag = { active: false, playerId: null, fromTeam: null, ghost: null, startY: 0 };
+  // Full reset
+  touchDrag = { active: false, playerId: null, fromTeam: null, ghost: null, row: null, longPress: null, startX: 0, startY: 0 };
+}
+
+function onTouchCancel() {
+  clearTimeout(touchDrag.longPress);
+  touchDrag.ghost?.remove();
+  touchDrag.row?.classList.remove('dragging');
+  document.querySelectorAll('.team-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+  document.querySelectorAll('.drop-placeholder').forEach(p => p.remove());
+  touchDrag = { active: false, playerId: null, fromTeam: null, ghost: null, row: null, longPress: null, startX: 0, startY: 0 };
 }
 
 function handleClearPlayers() {
@@ -1240,8 +1316,6 @@ function handleClearPlayers() {
   showAlert('Todos removidos!', 'success');
 }
 
-// --- Make removeSimplePlayer global ---
 window.removeSimplePlayer = removePlayer;
 
-// --- Start ---
 document.addEventListener('DOMContentLoaded', init);

@@ -1,5 +1,5 @@
 /* ========================================
-   Gerador de Times da Vila v3.0
+   Gerador de Times da Vila v4.0
    Design System – Minimal & Modern
    ======================================== */
 
@@ -9,6 +9,7 @@
   --bg: #f4f5f7;
   --surface: #ffffff;
   --surface-hover: #fafafa;
+  --surface-dark: #e2e4e9;
   --border: #e5e7eb;
   --border-focus: #a0aec0;
   --text-primary: #1a1a2e;
@@ -27,6 +28,8 @@
   --male-soft: #eef2ff;
   --female: #ec4899;
   --female-soft: #fdf2f8;
+  --guest: #8b5cf6;
+  --guest-soft: #f5f3ff;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -207,7 +210,7 @@ body {
   font-weight: 600;
 }
 
-/* --- Tag Toggles (setter/attacker) --- */
+/* --- Tag Toggles (setter/attacker/guest) --- */
 .tags-row {
   display: flex;
   gap: 10px;
@@ -242,6 +245,16 @@ body {
   border-color: var(--warning);
   background: var(--warning-soft);
   color: #b45309;
+}
+
+.tag-toggle input:checked + .guest-tag {
+  border-color: var(--guest);
+  background: var(--guest-soft);
+  color: var(--guest);
+}
+
+.guest-field {
+  margin-top: -8px;
 }
 
 /* --- Buttons --- */
@@ -424,10 +437,10 @@ body {
 .clear-btn.show { display: inline-flex; }
 .clear-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
 
-/* --- Bank Section --- */
+/* --- Bank Section (darker bg) --- */
 .bank-section {
-  background: var(--surface-hover);
-  border: 1.5px solid var(--border);
+  background: #d1d5de;
+  border: 1.5px solid #b8bcc7;
   border-radius: var(--radius-md);
   padding: 14px;
   margin-bottom: 16px;
@@ -442,7 +455,7 @@ body {
 .bank-header h3 {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .bank-actions {
@@ -538,38 +551,76 @@ body {
 .saved-player .edit-btn:hover { background: var(--accent-soft); color: var(--accent); }
 .saved-player .delete-btn:hover { background: var(--danger-soft); color: var(--danger); }
 
-/* --- Player List --- */
-.player-list {
-  list-style: none;
-  max-height: 360px;
-  overflow-y: auto;
-  margin-bottom: 8px;
+/* --- Grid Section Labels --- */
+.grid-section-label {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--surface-dark);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 4px;
 }
 
-.player-list:empty::after {
+.grid-section-label:first-child { margin-top: 0; }
+
+.grid-section-label.guest-label {
+  background: var(--guest-soft);
+  color: var(--guest);
+}
+
+.grid-section-count {
+  background: rgba(0,0,0,.08);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+}
+
+/* --- Player Grid (3 columns) --- */
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .player-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.player-grid:empty::after {
   content: 'Nenhum jogador adicionado.';
   display: block;
   text-align: center;
   padding: 32px 16px;
   color: var(--text-muted);
   font-size: 14px;
+  grid-column: 1 / -1;
 }
 
-.player-list::-webkit-scrollbar { width: 4px; }
-.player-list::-webkit-scrollbar-track { background: transparent; }
-.player-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.player-grid::-webkit-scrollbar { width: 4px; }
+.player-grid::-webkit-scrollbar-track { background: transparent; }
+.player-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
 .player-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 4px;
+  padding: 10px 6px;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-md);
-  margin-bottom: 6px;
   cursor: pointer;
   transition: all var(--transition);
+  position: relative;
+  text-align: center;
 }
 
 .player-item:hover {
@@ -582,15 +633,19 @@ body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.player-item.is-guest {
+  border-left: 3px solid var(--guest);
+}
+
 .player-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   color: #fff;
   flex-shrink: 0;
 }
@@ -601,27 +656,33 @@ body {
 .player-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .player-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .player-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-top: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .level-stars {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
 }
 
@@ -638,10 +699,14 @@ body {
 
 .pos-badge.setter { background: var(--male-soft); color: var(--male); }
 .pos-badge.attacker { background: var(--warning-soft); color: #b45309; }
+.pos-badge.guest-badge { background: var(--guest-soft); color: var(--guest); font-size: 9px; }
 
 .player-remove {
-  width: 28px;
-  height: 28px;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -651,13 +716,27 @@ body {
   align-items: center;
   justify-content: center;
   transition: all var(--transition);
-  font-size: 14px;
+  font-size: 12px;
   flex-shrink: 0;
+  opacity: 0;
 }
+
+.player-item:hover .player-remove { opacity: 1; }
 
 .player-remove:hover {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+/* --- Guest indicator in player item --- */
+.guest-indicator {
+  font-size: 9px;
+  color: var(--guest);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* --- Simple Players Card --- */
@@ -679,9 +758,13 @@ body {
 
 .simple-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   padding: 10px;
+}
+
+@media (max-width: 480px) {
+  .simple-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .simple-player-chip {
@@ -870,10 +953,12 @@ body {
   gap: 10px;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  transition: background var(--transition), transform .15s ease, opacity .15s ease;
+  transition: background var(--transition);
   cursor: grab;
   user-select: none;
   position: relative;
+  -webkit-user-select: none;
+  touch-action: pan-y;
 }
 
 .team-player-row:hover { background: var(--surface-hover); }
@@ -913,7 +998,6 @@ body {
 /* Drag & Drop States */
 .team-player-row.dragging {
   opacity: .3;
-  transform: scale(.97);
   background: var(--border);
 }
 
@@ -972,6 +1056,49 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+/* --- Share Button --- */
+.share-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.btn-share {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition);
+  color: #fff;
+}
+
+.btn-share.whatsapp {
+  background: #25d366;
+}
+
+.btn-share.whatsapp:hover {
+  background: #1eba59;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-share.copy {
+  background: var(--text-secondary);
+}
+
+.btn-share.copy:hover {
+  background: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .team-summary {
@@ -1080,5 +1207,6 @@ body {
   .tags-row { flex-wrap: wrap; }
   .chip span { padding: 5px 10px; font-size: 11px; }
   .form-actions { flex-direction: column; }
-  .simple-grid { grid-template-columns: 1fr 1fr; }
+  .share-actions { flex-direction: column; }
+  .btn-share { justify-content: center; }
 }
